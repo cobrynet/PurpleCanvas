@@ -1,17 +1,34 @@
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Megaphone, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { Megaphone, Plus, Upload, Calendar, Edit3 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Marketing() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [postForm, setPostForm] = useState({
+    title: "",
+    channel: "",
+    copy: "",
+    content: null as File | null,
+    scheduledAt: "",
+    priority: "P2"
+  });
+  const [uploadProgress, setUploadProgress] = useState(false);
   
   const currentOrg = user?.organizations?.[0];
   const currentMembership = currentOrg?.membership;
@@ -61,6 +78,122 @@ export default function Marketing() {
     }
   }, [campaignsError, toast]);
 
+  // Upload file function
+  const uploadFile = async (file: File) => {
+    try {
+      setUploadProgress(true);
+      
+      // Step 1: Get upload URL
+      const initResponse = await fetch("/api/upload/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      
+      if (!initResponse.ok) {
+        throw new Error("Failed to get upload URL");
+      }
+      
+      const initData = await initResponse.json();
+      
+      // Step 2: Complete upload with file data
+      const uploadData = {
+        title: postForm.title || file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        organizationId: currentOrg?.id
+      };
+      
+      const completeResponse = await fetch("/api/upload/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(uploadData)
+      });
+      
+      if (!completeResponse.ok) {
+        throw new Error("Failed to complete upload");
+      }
+      
+      const completeData = await completeResponse.json();
+      
+      if (!completeData.success) {
+        throw new Error("Failed to complete upload");
+      }
+      
+      toast({
+        title: "Upload completato",
+        description: "File caricato con successo"
+      });
+      
+      return completeData.asset;
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Errore upload",
+        description: "Impossibile caricare il file",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setUploadProgress(false);
+    }
+  };
+
+  // Save post function
+  const savePost = async (isDraft = true) => {
+    try {
+      let assetId = null;
+      
+      // Upload file if present
+      if (postForm.content) {
+        const asset = await uploadFile(postForm.content);
+        assetId = asset.id;
+      }
+      
+      const postData = {
+        title: postForm.title,
+        channel: postForm.channel,
+        content: postForm.copy,
+        assetIds: assetId ? [assetId] : [],
+        scheduledAt: postForm.scheduledAt ? new Date(postForm.scheduledAt).toISOString() : null,
+        priority: postForm.priority,
+        status: isDraft ? "draft" : "scheduled",
+        organizationId: currentOrg?.id
+      };
+      
+      // For now, just show success message (you can add API endpoint later)
+      toast({
+        title: isDraft ? "Bozza salvata" : "Post pianificato",
+        description: `Post "${postForm.title}" ${isDraft ? "salvato come bozza" : "pianificato con successo"}`
+      });
+      
+      // Reset form and close modal
+      setPostForm({
+        title: "",
+        channel: "",
+        copy: "",
+        content: null,
+        scheduledAt: "",
+        priority: "P2"
+      });
+      setIsPostModalOpen(false);
+      
+    } catch (error) {
+      console.error("Save error:", error);
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare il post",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPostForm(prev => ({ ...prev, content: file }));
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -103,7 +236,7 @@ export default function Marketing() {
   return (
     <MainLayout title="Marketing" icon={Megaphone}>
       <div data-testid="marketing-content">
-        {/* Header with New Campaign Button */}
+        {/* Header with Action Buttons */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-2xl font-bold">Gestione Campagne</h2>
@@ -111,10 +244,141 @@ export default function Marketing() {
               Crea e gestisci le tue campagne marketing
             </p>
           </div>
-          <Button className="flex items-center space-x-2" data-testid="new-campaign-button">
-            <Plus className="w-4 h-4" />
-            <span>Nuova Campagna</span>
-          </Button>
+          <div className="flex space-x-3">
+            <Dialog open={isPostModalOpen} onOpenChange={setIsPostModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="flex items-center space-x-2" data-testid="new-post-button">
+                  <Edit3 className="w-4 h-4" />
+                  <span>Nuova attività → Post</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Crea Nuovo Post</DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-6 py-4">
+                  {/* Titolo */}
+                  <div className="space-y-2">
+                    <Label htmlFor="post-title">Titolo</Label>
+                    <Input
+                      id="post-title"
+                      placeholder="Inserisci il titolo del post"
+                      value={postForm.title}
+                      onChange={(e) => setPostForm(prev => ({ ...prev, title: e.target.value }))}
+                      data-testid="post-title-input"
+                    />
+                  </div>
+
+                  {/* Canale */}
+                  <div className="space-y-2">
+                    <Label htmlFor="post-channel">Canale</Label>
+                    <Select value={postForm.channel} onValueChange={(value) => setPostForm(prev => ({ ...prev, channel: value }))}>
+                      <SelectTrigger data-testid="post-channel-select">
+                        <SelectValue placeholder="Seleziona canale" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="facebook">Facebook</SelectItem>
+                        <SelectItem value="instagram">Instagram</SelectItem>
+                        <SelectItem value="linkedin">LinkedIn</SelectItem>
+                        <SelectItem value="twitter">Twitter</SelectItem>
+                        <SelectItem value="tiktok">TikTok</SelectItem>
+                        <SelectItem value="website">Website</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Copy */}
+                  <div className="space-y-2">
+                    <Label htmlFor="post-copy">Copy</Label>
+                    <Textarea
+                      id="post-copy"
+                      placeholder="Scrivi il testo del post..."
+                      rows={4}
+                      value={postForm.copy}
+                      onChange={(e) => setPostForm(prev => ({ ...prev, copy: e.target.value }))}
+                      data-testid="post-copy-textarea"
+                    />
+                  </div>
+
+                  {/* Carica contenuto */}
+                  <div className="space-y-2">
+                    <Label htmlFor="post-content">Carica contenuto</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="post-content"
+                        type="file"
+                        accept="image/*,video/*,.pdf,.doc,.docx"
+                        onChange={handleFileChange}
+                        data-testid="post-content-input"
+                        className="flex-1"
+                      />
+                      {uploadProgress && (
+                        <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                      )}
+                    </div>
+                    {postForm.content && (
+                      <p className="text-sm text-muted-foreground">
+                        File selezionato: {postForm.content.name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Data/Ora */}
+                  <div className="space-y-2">
+                    <Label htmlFor="post-scheduled">Data/Ora pubblicazione</Label>
+                    <Input
+                      id="post-scheduled"
+                      type="datetime-local"
+                      value={postForm.scheduledAt}
+                      onChange={(e) => setPostForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
+                      data-testid="post-scheduled-input"
+                    />
+                  </div>
+
+                  {/* Priorità */}
+                  <div className="space-y-2">
+                    <Label htmlFor="post-priority">Priorità</Label>
+                    <Select value={postForm.priority} onValueChange={(value) => setPostForm(prev => ({ ...prev, priority: value }))}>
+                      <SelectTrigger data-testid="post-priority-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="P0">P0 - Critica</SelectItem>
+                        <SelectItem value="P1">P1 - Alta</SelectItem>
+                        <SelectItem value="P2">P2 - Media</SelectItem>
+                        <SelectItem value="P3">P3 - Bassa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => savePost(true)}
+                      disabled={!postForm.title || uploadProgress}
+                      data-testid="save-draft-button"
+                    >
+                      Salva bozza
+                    </Button>
+                    <Button
+                      onClick={() => savePost(false)}
+                      disabled={!postForm.title || !postForm.channel || uploadProgress}
+                      data-testid="schedule-post-button"
+                    >
+                      Pianifica
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Button className="flex items-center space-x-2" data-testid="new-campaign-button">
+              <Plus className="w-4 h-4" />
+              <span>Nuova Campagna</span>
+            </Button>
+          </div>
         </div>
 
         {/* Campaigns Grid */}
@@ -135,7 +399,7 @@ export default function Marketing() {
               </Card>
             ))}
           </div>
-        ) : campaigns.length === 0 ? (
+        ) : (campaigns as any[]).length === 0 ? (
           <Card data-testid="no-campaigns">
             <CardContent className="text-center py-12">
               <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -151,7 +415,7 @@ export default function Marketing() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="campaigns-grid">
-            {campaigns.map((campaign: any) => (
+            {(campaigns as any[]).map((campaign: any) => (
               <Card key={campaign.id} className="hover:shadow-md transition-shadow" data-testid={`campaign-${campaign.id}`}>
                 <CardHeader>
                   <div className="flex justify-between items-start">

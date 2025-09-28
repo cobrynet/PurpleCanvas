@@ -41,45 +41,10 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
     }
   };
 
-  // Default activities for empty state
-  const defaultActivities = [
-    {
-      id: '1',
-      type: 'campaign' as const,
-      description: 'Sara ha creato la campagna "Black Friday 2024"',
-      timestamp: '2 ore fa'
-    },
-    {
-      id: '2',
-      type: 'lead' as const,
-      description: 'Marco ha convertito un lead in opportunità',
-      timestamp: '4 ore fa'
-    },
-    {
-      id: '3',
-      type: 'task' as const,
-      description: 'Luca ha completato "Setup Google Analytics"',
-      timestamp: '1 giorno fa'
-    }
-  ];
 
-  const defaultDeadlines = [
-    {
-      id: '1',
-      title: 'Follow-up Tecnomec',
-      dueDate: 'Scade oggi',
-      priority: 'P0'
-    },
-    {
-      id: '2',
-      title: 'Banner Black Friday',
-      dueDate: 'Scade domani',
-      priority: 'P1'
-    }
-  ];
-
-  const displayActivities = activities.length > 0 ? activities : defaultActivities;
-  const displayDeadlines = upcomingDeadlines.length > 0 ? upcomingDeadlines : defaultDeadlines;
+  // Show activities or empty state message
+  const displayActivities = activities || [];
+  const displayDeadlines = upcomingDeadlines || [];
 
   return (
     <div className="space-y-6">
@@ -89,9 +54,14 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
           <h3 className="text-lg font-semibold">Attività Recente</h3>
         </CardHeader>
         <CardContent className="space-y-4">
-          {displayActivities.map((activity) => {
-            const Icon = getActivityIcon(activity.type);
-            return (
+          {displayActivities.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4" data-testid="empty-activities">
+              Nessuna attività recente
+            </p>
+          ) : (
+            displayActivities.map((activity) => {
+              const Icon = getActivityIcon(activity.type);
+              return (
               <div key={activity.id} className="flex items-start space-x-3" data-testid={`activity-${activity.id}`}>
                 <div className={`p-2 rounded-full mt-1 ${getActivityColor(activity.type)}`}>
                   <Icon className="w-3 h-3" />
@@ -106,7 +76,8 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </CardContent>
       </Card>
 
@@ -116,7 +87,12 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
           <h3 className="text-lg font-semibold">Scadenze Imminenti</h3>
         </CardHeader>
         <CardContent className="space-y-3">
-          {displayDeadlines.map((deadline) => {
+          {displayDeadlines.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4" data-testid="empty-deadlines">
+              Nessuna scadenza imminente
+            </p>
+          ) : (
+            displayDeadlines.map((deadline) => {
             const isUrgent = deadline.dueDate.includes('oggi');
             const isImportant = deadline.dueDate.includes('domani');
             
@@ -172,7 +148,8 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
                 </Badge>
               </div>
             );
-          })}
+          })
+          )}
         </CardContent>
       </Card>
     </div>

@@ -80,7 +80,8 @@ export default function Dashboard() {
   // Fetch recent activity
   const { 
     data: recentActivity = [], 
-    isLoading: activityLoading 
+    isLoading: activityLoading,
+    error: activityError 
   } = useQuery<Activity[]>({
     queryKey: ["/api/organizations", currentOrg?.id, "recent-activity"],
     enabled: !!currentOrg?.id && isAuthenticated,
@@ -90,12 +91,14 @@ export default function Dashboard() {
   // Fetch upcoming deadlines
   const { 
     data: upcomingDeadlines = [], 
-    isLoading: deadlinesLoading 
+    isLoading: deadlinesLoading,
+    error: deadlinesError 
   } = useQuery<Deadline[]>({
     queryKey: ["/api/organizations", currentOrg?.id, "upcoming-deadlines"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
   });
+
 
   // Handle errors
   useEffect(() => {
@@ -125,6 +128,55 @@ export default function Dashboard() {
       return;
     }
   }, [tasksError, toast]);
+
+  useEffect(() => {
+    if (activityError && isUnauthorizedError(activityError as Error)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [activityError, toast]);
+
+  useEffect(() => {
+    if (deadlinesError && isUnauthorizedError(deadlinesError as Error)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [deadlinesError, toast]);
+
+  // Handle non-auth errors with toast
+  useEffect(() => {
+    if (activityError && !isUnauthorizedError(activityError as Error)) {
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare le attività recenti",
+        variant: "destructive",
+      });
+    }
+  }, [activityError, toast]);
+
+  useEffect(() => {
+    if (deadlinesError && !isUnauthorizedError(deadlinesError as Error)) {
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare le scadenze",
+        variant: "destructive",
+      });
+    }
+  }, [deadlinesError, toast]);
 
   if (authLoading) {
     return (

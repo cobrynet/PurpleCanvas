@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import Marketing from "@/pages/Marketing";
+import MarketingOverview from "@/pages/MarketingOverview";
 import CRM from "@/pages/CRM";
 import Tasks from "@/pages/Tasks";
 import Marketplace from "@/pages/Marketplace";
@@ -25,6 +26,7 @@ function Router() {
         <AppLayout>
           <Switch>
             <Route path="/" component={Dashboard} />
+            <Route path="/marketing/overview" component={MarketingOverview} />
             <Route path="/marketing/campaigns" component={Marketing} />
             <Route path="/crm/leads" component={CRM} />
             <Route path="/crm/opportunities" component={CRM} />

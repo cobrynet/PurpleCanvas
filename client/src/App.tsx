@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
+import { AppLayout } from "@/app/layout";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
@@ -21,15 +22,18 @@ function Router() {
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/marketing/campaigns" component={Marketing} />
-          <Route path="/crm/leads" component={CRM} />
-          <Route path="/crm/opportunities" component={CRM} />
-          <Route path="/crm/pipeline" component={CRM} />
-          <Route path="/tasks" component={Tasks} />
-          <Route path="/marketplace" component={Marketplace} />
-        </>
+        <AppLayout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/marketing/campaigns" component={Marketing} />
+            <Route path="/crm/leads" component={CRM} />
+            <Route path="/crm/opportunities" component={CRM} />
+            <Route path="/crm/pipeline" component={CRM} />
+            <Route path="/tasks" component={Tasks} />
+            <Route path="/marketplace" component={Marketplace} />
+            <Route component={NotFound} />
+          </Switch>
+        </AppLayout>
       )}
       <Route component={NotFound} />
     </Switch>

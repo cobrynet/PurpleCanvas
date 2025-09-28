@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  DOC
+  ARCHIVE
+}
+
+model Asset {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  type            AssetType
+  mimeType        String    @map("mime_type")
+  sizeBytes       Int       @map("size_bytes")
+  width           Int?
+  height          Int?
+  durationSec     Int?      @map("duration_sec")
+  checksumSha256  String    @map("checksum_sha256")
+  url             String
+  thumbUrl        String?   @map("thumb_url")
+  title           String?
+  tags            String[]
+  folder          String?
+  rights          Json?
+  ownerId         String?   @map("owner_id")
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("assets")
+}

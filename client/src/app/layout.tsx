@@ -31,12 +31,12 @@ interface AppLayoutProps {
 
 const sidebarItems = [
   { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/" },
-  { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing/campaigns" },
+  { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing/overview" },
   { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
   { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag, href: "/marketplace" },
-  { id: "chat", label: "Chat", icon: MessageCircle, href: "/" },
-  { id: "impostazioni", label: "Impostazioni", icon: Settings, href: "/" },
+  { id: "chat", label: "Chat", icon: MessageCircle, href: "/chat" },
+  { id: "impostazioni", label: "Impostazioni", icon: Settings, href: "/settings" },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -48,6 +48,8 @@ export function AppLayout({ children }: AppLayoutProps) {
     if (href !== "/" && location.startsWith(href)) return true;
     // Special case for Commerciale to highlight on any CRM route
     if (itemId === "commerciale" && location.startsWith("/crm")) return true;
+    // Special case for Marketing to highlight on any marketing route
+    if (itemId === "marketing" && location.startsWith("/marketing")) return true;
     return false;
   };
 
@@ -106,7 +108,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 aria-label="Impostazioni"
                 asChild
               >
-                <Link href="/">
+                <Link href="/settings">
                   <Settings className="h-4 w-4" />
                   <span className="ml-2 hidden md:inline">Impostazioni</span>
                 </Link>

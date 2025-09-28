@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(249, 250, 251);
+  --foreground: hsl(30, 41, 59);
+  --card: hsl(255, 255, 255);
+  --card-foreground: hsl(30, 41, 59);
+  --popover: hsl(255, 255, 255);
+  --popover-foreground: hsl(30, 41, 59);
+  --primary: hsl(124, 58, 237);
+  --primary-foreground: hsl(248, 250, 252);
+  --secondary: hsl(139, 92, 246);
+  --secondary-foreground: hsl(248, 250, 252);
+  --muted: hsl(241, 245, 249);
+  --muted-foreground: hsl(100, 116, 139);
+  --accent: hsl(196, 181, 253);
+  --accent-foreground: hsl(55, 48, 163);
+  --destructive: hsl(239, 68, 68);
+  --destructive-foreground: hsl(248, 250, 252);
+  --border: hsl(226, 232, 240);
+  --input: hsl(226, 232, 240);
+  --ring: hsl(124, 58, 237);
+  --chart-1: hsl(124, 58, 237);
+  --chart-2: hsl(159, 100, 36);
+  --chart-3: hsl(42, 92, 56);
+  --chart-4: hsl(147, 78, 41);
+  --chart-5: hsl(341, 75, 50);
+  --sidebar: hsl(255, 255, 255);
+  --sidebar-foreground: hsl(30, 41, 59);
+  --sidebar-primary: hsl(124, 58, 237);
+  --sidebar-primary-foreground: hsl(248, 250, 252);
+  --sidebar-accent: hsl(196, 181, 253);
+  --sidebar-accent-foreground: hsl(55, 48, 163);
+  --sidebar-border: hsl(226, 232, 240);
+  --sidebar-ring: hsl(124, 58, 237);
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Georgia", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(124 58 237 / 0.05);
+  --shadow-xs: 0px 1px 2px 0px hsl(124 58 237 / 0.05);
+  --shadow-sm: 0px 1px 3px 0px hsl(124 58 237 / 0.1), 0px 1px 2px -1px hsl(124 58 237 / 0.1);
+  --shadow: 0px 1px 3px 0px hsl(124 58 237 / 0.1), 0px 1px 2px -1px hsl(124 58 237 / 0.1);
+  --shadow-md: 0px 4px 6px -1px hsl(124 58 237 / 0.1), 0px 2px 4px -2px hsl(124 58 237 / 0.1);
+  --shadow-lg: 0px 10px 15px -3px hsl(124 58 237 / 0.1), 0px 4px 6px -4px hsl(124 58 237 / 0.1);
+  --shadow-xl: 0px 20px 25px -5px hsl(124 58 237 / 0.1), 0px 8px 10px -6px hsl(124 58 237 / 0.1);
+  --shadow-2xl: 0px 25px 50px -12px hsl(124 58 237 / 0.25);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(15, 23, 42);
+  --foreground: hsl(248, 250, 252);
+  --card: hsl(30, 41, 59);
+  --card-foreground: hsl(248, 250, 252);
+  --popover: hsl(30, 41, 59);
+  --popover-foreground: hsl(248, 250, 252);
+  --primary: hsl(139, 92, 246);
+  --primary-foreground: hsl(15, 23, 42);
+  --secondary: hsl(124, 58, 237);
+  --secondary-foreground: hsl(248, 250, 252);
+  --muted: hsl(51, 65, 85);
+  --muted-foreground: hsl(148, 163, 184);
+  --accent: hsl(109, 40, 217);
+  --accent-foreground: hsl(196, 181, 253);
+  --destructive: hsl(239, 68, 68);
+  --destructive-foreground: hsl(248, 250, 252);
+  --border: hsl(51, 65, 85);
+  --input: hsl(51, 65, 85);
+  --ring: hsl(139, 92, 246);
+  --chart-1: hsl(124, 58, 237);
+  --chart-2: hsl(159, 100, 36);
+  --chart-3: hsl(42, 92, 56);
+  --chart-4: hsl(147, 78, 41);
+  --chart-5: hsl(341, 75, 50);
+  --sidebar: hsl(30, 41, 59);
+  --sidebar-foreground: hsl(248, 250, 252);
+  --sidebar-primary: hsl(139, 92, 246);
+  --sidebar-primary-foreground: hsl(15, 23, 42);
+  --sidebar-accent: hsl(109, 40, 217);
+  --sidebar-accent-foreground: hsl(196, 181, 253);
+  --sidebar-border: hsl(51, 65, 85);
+  --sidebar-ring: hsl(139, 92, 246);
+  --font-sans: "Inter", sans-serif;
+  --font-serif: "Georgia", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --radius: 0.75rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(139 92 246 / 0.05);
+  --shadow-xs: 0px 1px 2px 0px hsl(139 92 246 / 0.05);
+  --shadow-sm: 0px 1px 3px 0px hsl(139 92 246 / 0.1), 0px 1px 2px -1px hsl(139 92 246 / 0.1);
+  --shadow: 0px 1px 3px 0px hsl(139 92 246 / 0.1), 0px 1px 2px -1px hsl(139 92 246 / 0.1);
+  --shadow-md: 0px 4px 6px -1px hsl(139 92 246 / 0.1), 0px 2px 4px -2px hsl(139 92 246 / 0.1);
+  --shadow-lg: 0px 10px 15px -3px hsl(139 92 246 / 0.1), 0px 4px 6px -4px hsl(139 92 246 / 0.1);
+  --shadow-xl: 0px 20px 25px -5px hsl(139 92 246 / 0.1), 0px 8px 10px -6px hsl(139 92 246 / 0.1);
+  --shadow-2xl: 0px 25px 50px -12px hsl(139 92 246 / 0.25);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}

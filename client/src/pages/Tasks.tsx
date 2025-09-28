@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, queryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { CheckSquare, Plus, Filter, Calendar, List, Kanban, MoreHorizontal, Clock, User } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { insertMarketingTaskSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 
 const taskFormSchema = insertMarketingTaskSchema.extend({
@@ -106,7 +106,7 @@ export default function Tasks() {
       subtype: "",
       status: "BACKLOG",
       priority: "P2",
-      dueAt: undefined
+      dueAt: null
     },
   });
 
@@ -306,8 +306,7 @@ export default function Tasks() {
                     </p>
                     <div className="flex items-center justify-between">
                       <Badge
-                        size="sm"
-                        className={getPriorityColor(task.priority)}
+                        className={`text-xs ${getPriorityColor(task.priority)}`}
                         data-testid={`kanban-task-priority-${task.id}`}
                       >
                         {task.priority}
@@ -483,7 +482,7 @@ export default function Tasks() {
                         <FormItem>
                           <FormLabel>Sottotipo (opzionale)</FormLabel>
                           <FormControl>
-                            <Input {...field} data-testid="task-subtype-input" />
+                            <Input {...field} value={field.value || ""} data-testid="task-subtype-input" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

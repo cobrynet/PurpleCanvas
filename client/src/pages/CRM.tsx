@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useQuery, useMutation, queryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { insertLeadSchema, insertOpportunitySchema } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { z } from "zod";
 
@@ -314,7 +314,7 @@ export default function CRM() {
                     <FormItem>
                       <FormLabel>Telefono</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="lead-phone" />
+                        <Input {...field} value={field.value || ""} data-testid="lead-phone" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -364,7 +364,7 @@ export default function CRM() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Priorità</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || "P2"}>
                           <FormControl>
                             <SelectTrigger data-testid="lead-priority">
                               <SelectValue placeholder="Seleziona priorità" />
@@ -559,7 +559,7 @@ export default function CRM() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Priorità</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || "P2"}>
                           <FormControl>
                             <SelectTrigger data-testid="opportunity-priority">
                               <SelectValue placeholder="Seleziona priorità" />
@@ -588,6 +588,7 @@ export default function CRM() {
                           <Input 
                             type="number" 
                             {...field}
+                            value={field.value || ""}
                             onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                             data-testid="opportunity-amount"
                           />
@@ -608,6 +609,7 @@ export default function CRM() {
                             min="0" 
                             max="100"
                             {...field}
+                            value={field.value || ""}
                             onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
                             data-testid="opportunity-probability"
                           />

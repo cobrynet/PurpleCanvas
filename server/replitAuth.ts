@@ -57,13 +57,30 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
+  const user = await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
   });
+
+  // Check if user has any organizations, if not create a default one
+  const userOrgs = await storage.getUserOrganizations(user.id);
+  if (userOrgs.length === 0) {
+    // Create default organization for new user
+    const orgName = `${claims["first_name"] || "User"}'s Organization`;
+    const defaultOrg = await storage.createOrganization({
+      name: orgName,
+    });
+
+    // Add user as ORG_ADMIN
+    await storage.createMembership({
+      userId: user.id,
+      organizationId: defaultOrg.id,
+      role: 'ORG_ADMIN',
+    });
+  }
 }
 
 export async function setupAuth(app: Express) {

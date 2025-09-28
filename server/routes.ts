@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { db } from "./db";
+import { organizations } from "@shared/schema";
+import { count } from "drizzle-orm";
 import { 
   insertOrganizationSchema,
   insertMembershipSchema,
@@ -12,6 +15,25 @@ import {
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint
+  app.get('/api/health', async (req, res) => {
+    try {
+      const result = await db.select({ count: count() }).from(organizations);
+      const organizationCount = result[0]?.count || 0;
+      
+      res.json({
+        ok: true,
+        count: organizationCount
+      });
+    } catch (error) {
+      console.error('Health check failed:', error);
+      res.status(500).json({
+        ok: false,
+        count: 0
+      });
+    }
+  });
+
   // Auth middleware
   await setupAuth(app);
 

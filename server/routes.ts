@@ -13,6 +13,7 @@ import {
   insertOpportunitySchema,
   insertMarketingTaskSchema 
 } from "@shared/schema";
+import { assets } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -329,6 +330,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Upload routes
+  app.post('/api/upload/init', isAuthenticated, async (req, res) => {
+    try {
+      // Mock upload URL generation
+      const uploadUrl = `https://mock-storage.example.com/upload/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      res.json({
+        uploadUrl,
+        fields: {
+          'Content-Type': 'application/octet-stream',
+          'x-amz-algorithm': 'AWS4-HMAC-SHA256',
+          'x-amz-credential': 'mock-credential',
+          'x-amz-date': new Date().toISOString(),
+          'policy': 'mock-policy',
+          'x-amz-signature': 'mock-signature'
+        }
+      });
+    } catch (error) {
+      console.error('Error generating upload URL:', error);
+      res.status(500).json({ error: 'Failed to generate upload URL' });
+    }
+  });
+
+  app.post('/api/upload/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const body = req.body;
+      
+      // Mock asset data
+      const mockAsset = {
+        organizationId: body.organizationId || '00000000-0000-0000-0000-000000000001',
+        type: 'IMAGE' as const,
+        mimeType: body.mimeType || 'image/jpeg',
+        sizeBytes: body.sizeBytes || 1024000,
+        width: body.width || 800,
+        height: body.height || 600,
+        checksumSha256: body.checksumSha256 || `mock-checksum-${Date.now()}`,
+        url: body.url || `https://mock-storage.example.com/assets/${Date.now()}.jpg`,
+        thumbUrl: `https://mock-storage.example.com/thumbnails/${Date.now()}_thumb.jpg`,
+        title: body.title || 'Mock Asset',
+        tags: body.tags || ['mock', 'upload'],
+        folder: body.folder || 'uploads',
+        ownerId: body.ownerId || userId
+      };
+
+      // Save asset using Drizzle
+      const [asset] = await db.insert(assets).values(mockAsset).returning();
+
+      res.json({
+        success: true,
+        asset: {
+          id: asset.id,
+          url: asset.url,
+          type: asset.type,
+          title: asset.title,
+          createdAt: asset.createdAt
+        }
+      });
+    } catch (error) {
+      console.error('Error completing upload:', error);
+      res.status(500).json({ error: 'Failed to complete upload' });
     }
   });
 

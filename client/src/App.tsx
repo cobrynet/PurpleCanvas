@@ -14,6 +14,8 @@ import MarketingOverview from "@/pages/MarketingOverview";
 import CRM from "@/pages/CRM";
 import Tasks from "@/pages/Tasks";
 import Marketplace from "@/pages/Marketplace";
+import Chat from "@/pages/Chat";
+import Settings from "@/pages/Settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,6 +35,8 @@ function Router() {
             <Route path="/crm/pipeline" component={CRM} />
             <Route path="/tasks" component={Tasks} />
             <Route path="/marketplace" component={Marketplace} />
+            <Route path="/chat" component={Chat} />
+            <Route path="/settings" component={Settings} />
             <Route component={NotFound} />
           </Switch>
         </AppLayout>

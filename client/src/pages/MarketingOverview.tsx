@@ -111,8 +111,8 @@ export default function MarketingOverview() {
       <div data-testid="marketing-overview-content">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold">Panoramica Marketing</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold" data-testid="page-title">Panoramica Marketing</h2>
+          <p className="text-muted-foreground" data-testid="page-subtitle">
             Dashboard completa delle performance marketing
           </p>
         </div>
@@ -177,7 +177,8 @@ export default function MarketingOverview() {
             <CardContent>
               <Calendar
                 mode="single"
-                disabled={true}
+                disabled={() => true}
+                onSelect={() => {}}
                 className="rounded-md border"
                 data-testid="readonly-calendar"
               />
@@ -185,19 +186,19 @@ export default function MarketingOverview() {
                 <div className="text-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span>Campagne Attive</span>
+                    <span data-testid="legend-active">Campagne Attive</span>
                   </div>
                 </div>
                 <div className="text-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span>Post Programmati</span>
+                    <span data-testid="legend-scheduled">Post Programmati</span>
                   </div>
                 </div>
                 <div className="text-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                    <span>Scadenze</span>
+                    <span data-testid="legend-deadlines">Scadenze</span>
                   </div>
                 </div>
               </div>

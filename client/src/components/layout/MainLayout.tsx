@@ -1,6 +1,5 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { useQuery } from "@tanstack/react-query";
 
@@ -26,10 +25,7 @@ export function MainLayout({ children, title, icon }: MainLayoutProps) {
 
   return (
     <div className="flex h-screen" data-testid="main-layout">
-      <Sidebar 
-        currentOrg={currentOrg}
-        userRole={currentMembership?.role}
-      />
+      {/* Sidebar removed - using main sidebar from app/layout.tsx instead */}
       <div className="flex-1 flex flex-col">
         <Header title={title} icon={icon} />
         <main className="flex-1 p-6 overflow-auto bg-background" data-testid="main-content">

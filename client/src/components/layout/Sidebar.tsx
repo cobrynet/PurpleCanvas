@@ -1,24 +1,10 @@
-import { Link, useLocation } from "wouter";
 import { 
   Building2, 
-  ChevronDown, 
-  LayoutDashboard, 
-  Target, 
-  Megaphone, 
-  Users, 
-  Folder, 
-  BarChart3,
-  UserPlus,
-  TrendingUp,
-  Container,
-  CheckSquare,
-  ShoppingCart,
-  MessageCircle,
+  ChevronDown,
   User,
   Settings
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -30,99 +16,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentOrg, userRole }: SidebarProps) {
-  const [location] = useLocation();
   const { user } = useAuth();
-
-  const isActive = (path: string) => location === path;
-
-  const menuItems = [
-    {
-      path: "/",
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      roles: ["ORG_ADMIN", "MARKETER", "SALES", "VIEWER"]
-    },
-    {
-      path: "/business-goals",
-      icon: Target,
-      label: "Obiettivi Aziendali",
-      roles: ["ORG_ADMIN", "MARKETER", "SALES", "VIEWER"]
-    }
-  ];
-
-  const marketingItems = [
-    {
-      path: "/marketing/campaigns",
-      icon: Megaphone,
-      label: "Campagne",
-      roles: ["ORG_ADMIN", "MARKETER"]
-    },
-    {
-      path: "/marketing/audiences",
-      icon: Users,
-      label: "Audience",
-      roles: ["ORG_ADMIN", "MARKETER"]
-    },
-    {
-      path: "/marketing/assets",
-      icon: Folder,
-      label: "Asset",
-      roles: ["ORG_ADMIN", "MARKETER"]
-    },
-    {
-      path: "/marketing/analytics",
-      icon: BarChart3,
-      label: "Analytics",
-      roles: ["ORG_ADMIN", "MARKETER", "VIEWER"]
-    }
-  ];
-
-  const crmItems = [
-    {
-      path: "/crm/leads",
-      icon: UserPlus,
-      label: "Lead",
-      roles: ["ORG_ADMIN", "SALES"]
-    },
-    {
-      path: "/crm/opportunities",
-      icon: TrendingUp,
-      label: "Opportunità",
-      roles: ["ORG_ADMIN", "SALES"]
-    },
-    {
-      path: "/crm/pipeline",
-      icon: Container,
-      label: "Container",
-      roles: ["ORG_ADMIN", "SALES", "VIEWER"]
-    }
-  ];
-
-  const globalItems = [
-    {
-      path: "/tasks",
-      icon: CheckSquare,
-      label: "Attività",
-      roles: ["ORG_ADMIN", "MARKETER", "SALES", "VIEWER"]
-    },
-    {
-      path: "/marketplace",
-      icon: ShoppingCart,
-      label: "Marketplace",
-      roles: ["ORG_ADMIN", "MARKETER", "SALES"]
-    },
-    {
-      path: "/chat",
-      icon: MessageCircle,
-      label: "Chat",
-      badge: 3,
-      roles: ["ORG_ADMIN", "MARKETER", "SALES", "VIEWER"]
-    }
-  ];
-
-  const hasRole = (roles: string[]) => {
-    return !userRole || roles.includes(userRole);
-  };
 
   return (
     <div className="w-64 bg-card border-r border-border flex flex-col" data-testid="sidebar">
@@ -148,108 +42,12 @@ export function Sidebar({ currentOrg, userRole }: SidebarProps) {
         </div>
       </div>
 
-      {/* Navigation Menu */}
+      {/* Navigation - Using main sidebar from app/layout.tsx instead */}
       <nav className="flex-1 p-4" data-testid="navigation">
         <div className="space-y-2">
-          {/* Main Items */}
-          {menuItems.map((item) => (
-            hasRole(item.roles) && (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive(item.path)
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted"
-                }`}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </Link>
-            )
-          ))}
-
-          {/* Marketing Section */}
-          {marketingItems.some(item => hasRole(item.roles)) && (
-            <div className="pt-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                Marketing
-              </p>
-              <div className="space-y-1">
-                {marketingItems.map((item) => (
-                  hasRole(item.roles) && (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive(item.path)
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
-                      }`}
-                      data-testid={`nav-marketing-${item.label.toLowerCase()}`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* CRM Section */}
-          {crmItems.some(item => hasRole(item.roles)) && (
-            <div className="pt-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                CRM
-              </p>
-              <div className="space-y-1">
-                {crmItems.map((item) => (
-                  hasRole(item.roles) && (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive(item.path)
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
-                      }`}
-                      data-testid={`nav-crm-${item.label.toLowerCase()}`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Global Sections */}
-          <div className="pt-2">
-            {globalItems.map((item) => (
-              hasRole(item.roles) && (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive(item.path)
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted"
-                  }`}
-                  data-testid={`nav-${item.label.toLowerCase()}`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <Badge variant="destructive" className="ml-auto text-xs">
-                      {item.badge}
-                    </Badge>
-                  )}
-                </Link>
-              )
-            ))}
+          <div className="text-center text-sm text-muted-foreground py-8">
+            <p>Navigation handled by main layout</p>
+            <p className="text-xs mt-2">(Obiettivi, Marketing, Commerciale, Attività, Marketplace, Chat, Impostazioni)</p>
           </div>
         </div>
       </nav>

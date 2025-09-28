@@ -9,6 +9,30 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import type { MarketingTask } from "@shared/schema";
+
+// Import Activity type from RecentActivity component
+type Activity = {
+  id: string;
+  type: 'campaign' | 'lead' | 'task' | 'opportunity';
+  description: string;
+  timestamp: string;
+  user?: string;
+};
+
+type DashboardStats = {
+  activeCampaigns: number;
+  totalLeads: number;
+  totalOpportunities: number;
+  openTasks: number;
+};
+
+type Deadline = {
+  id: string;
+  title: string;
+  dueDate: string;
+  priority: string;
+};
 
 export default function Dashboard() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -36,7 +60,7 @@ export default function Dashboard() {
     data: stats, 
     isLoading: statsLoading,
     error: statsError 
-  } = useQuery({
+  } = useQuery<DashboardStats>({
     queryKey: ["/api/organizations", currentOrg?.id, "dashboard-stats"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
@@ -47,8 +71,28 @@ export default function Dashboard() {
     data: tasks = [], 
     isLoading: tasksLoading,
     error: tasksError 
-  } = useQuery({
+  } = useQuery<MarketingTask[]>({
     queryKey: ["/api/organizations", currentOrg?.id, "tasks"],
+    enabled: !!currentOrg?.id && isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch recent activity
+  const { 
+    data: recentActivity = [], 
+    isLoading: activityLoading 
+  } = useQuery<Activity[]>({
+    queryKey: ["/api/organizations", currentOrg?.id, "recent-activity"],
+    enabled: !!currentOrg?.id && isAuthenticated,
+    retry: false,
+  });
+
+  // Fetch upcoming deadlines
+  const { 
+    data: upcomingDeadlines = [], 
+    isLoading: deadlinesLoading 
+  } = useQuery<Deadline[]>({
+    queryKey: ["/api/organizations", currentOrg?.id, "upcoming-deadlines"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
   });
@@ -104,13 +148,13 @@ export default function Dashboard() {
   }
 
   // Transform tasks for display
-  const displayTasks = tasks.slice(0, 5).map((task: any) => ({
+  const displayTasks = tasks.slice(0, 5).map((task) => ({
     id: task.id,
     title: task.title,
-    priority: task.priority,
+    priority: task.priority || 'P2',
     status: task.status === 'IN_PROGRESS' ? 'In Progress' : 
             task.status === 'IN_REVIEW' ? 'In Review' :
-            task.status === 'DONE' ? 'Fatto' : task.status,
+            task.status === 'DONE' ? 'Fatto' : task.status || 'BACKLOG',
     campaign: task.campaignId ? 'Campagna' : undefined,
     assignee: task.assigneeId ? 'Assegnato' : undefined,
     dueDate: task.dueAt ? new Date(task.dueAt).toLocaleDateString('it-IT') : undefined,
@@ -143,7 +187,10 @@ export default function Dashboard() {
           {/* Recent Activity & Quick Actions */}
           <div className="space-y-6">
             <QuickActions />
-            <RecentActivity />
+            <RecentActivity 
+              activities={recentActivity}
+              upcomingDeadlines={upcomingDeadlines}
+            />
           </div>
         </div>
       </div>

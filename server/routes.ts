@@ -99,6 +99,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Recent activity
+  app.get('/api/organizations/:id/recent-activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = req.params.id;
+      
+      // Check if user has access to this organization
+      const membership = await storage.getUserMembership(userId, orgId);
+      if (!membership) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const activities = await storage.getRecentActivity(orgId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching recent activity:", error);
+      res.status(500).json({ message: "Failed to fetch recent activity" });
+    }
+  });
+
+  // Upcoming deadlines
+  app.get('/api/organizations/:id/upcoming-deadlines', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = req.params.id;
+      
+      // Check if user has access to this organization
+      const membership = await storage.getUserMembership(userId, orgId);
+      if (!membership) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const deadlines = await storage.getUpcomingDeadlines(orgId);
+      res.json(deadlines);
+    } catch (error) {
+      console.error("Error fetching upcoming deadlines:", error);
+      res.status(500).json({ message: "Failed to fetch upcoming deadlines" });
+    }
+  });
+
   // Campaign routes
   app.post('/api/organizations/:orgId/campaigns', isAuthenticated, async (req: any, res) => {
     try {

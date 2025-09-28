@@ -28,7 +28,7 @@ import {
   type OrgServiceOrder,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc, count, ne, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -87,6 +87,22 @@ export interface IStorage {
     totalOpportunities: number;
     openTasks: number;
   }>;
+
+  // Recent activity and deadlines
+  getRecentActivity(orgId: string): Promise<Array<{
+    id: string;
+    type: 'campaign' | 'lead' | 'task' | 'opportunity';
+    description: string;
+    timestamp: string;
+    user?: string;
+  }>>;
+  
+  getUpcomingDeadlines(orgId: string): Promise<Array<{
+    id: string;
+    title: string;
+    dueDate: string;
+    priority: string;
+  }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -358,6 +374,165 @@ export class DatabaseStorage implements IStorage {
       totalOpportunities: totalOpportunitiesResult.count,
       openTasks: openTasksResult.count,
     };
+  }
+
+  async getRecentActivity(orgId: string): Promise<Array<{
+    id: string;
+    type: 'campaign' | 'lead' | 'task' | 'opportunity';
+    description: string;
+    timestamp: string;
+    user?: string;
+  }>> {
+    const activities = [];
+
+    // Get recent campaigns (last 7 days)
+    const recentCampaigns = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.organizationId, orgId))
+      .orderBy(desc(campaigns.createdAt))
+      .limit(3);
+
+    for (const campaign of recentCampaigns) {
+      if (campaign.createdAt) {
+        activities.push({
+          id: campaign.id,
+          type: 'campaign' as const,
+          description: `Nuova campagna "${campaign.name}" creata`,
+          timestamp: this.formatRelativeTime(campaign.createdAt),
+        });
+      }
+    }
+
+    // Get recent leads (last 7 days)
+    const recentLeads = await db
+      .select()
+      .from(leads)
+      .where(eq(leads.organizationId, orgId))
+      .orderBy(desc(leads.createdAt))
+      .limit(3);
+
+    for (const lead of recentLeads) {
+      if (lead.createdAt) {
+        activities.push({
+          id: lead.id,
+          type: 'lead' as const,
+          description: `Nuovo lead: ${lead.firstName} ${lead.lastName} da ${lead.company || lead.source}`,
+          timestamp: this.formatRelativeTime(lead.createdAt),
+        });
+      }
+    }
+
+    // Get recent completed tasks
+    const recentTasks = await db
+      .select()
+      .from(marketingTasks)
+      .where(and(
+        eq(marketingTasks.organizationId, orgId),
+        eq(marketingTasks.status, 'DONE')
+      ))
+      .orderBy(desc(marketingTasks.createdAt))
+      .limit(3);
+
+    for (const task of recentTasks) {
+      if (task.createdAt) {
+        activities.push({
+          id: task.id,
+          type: 'task' as const,
+          description: `Attività completata: "${task.title}"`,
+          timestamp: this.formatRelativeTime(task.createdAt),
+        });
+      }
+    }
+
+    // Get recent opportunities
+    const recentOpportunities = await db
+      .select()
+      .from(opportunities)
+      .where(eq(opportunities.organizationId, orgId))
+      .orderBy(desc(opportunities.createdAt))
+      .limit(2);
+
+    for (const opportunity of recentOpportunities) {
+      if (opportunity.createdAt) {
+        activities.push({
+          id: opportunity.id,
+          type: 'opportunity' as const,
+          description: `Nuova opportunità: "${opportunity.title}" (€${opportunity.amount})`,
+          timestamp: this.formatRelativeTime(opportunity.createdAt),
+        });
+      }
+    }
+
+    // Activities are already sorted by creation time from individual queries
+    return activities.slice(0, 6);
+  }
+
+  async getUpcomingDeadlines(orgId: string): Promise<Array<{
+    id: string;
+    title: string;
+    dueDate: string;
+    priority: string;
+  }>> {
+    const now = new Date();
+    const nextWeek = new Date(now);
+    nextWeek.setDate(now.getDate() + 7);
+
+    const upcomingTasks = await db
+      .select()
+      .from(marketingTasks)
+      .where(and(
+        eq(marketingTasks.organizationId, orgId),
+        ne(marketingTasks.status, 'DONE'),
+        isNotNull(marketingTasks.dueAt)
+      ))
+      .orderBy(marketingTasks.dueAt)
+      .limit(10);
+
+    return upcomingTasks
+      .filter(task => task.dueAt && new Date(task.dueAt) <= nextWeek)
+      .map(task => ({
+        id: task.id,
+        title: task.title,
+        dueDate: this.formatDueDate(task.dueAt!),
+        priority: task.priority || 'P2',
+      }));
+  }
+
+  private formatRelativeTime(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) {
+      return 'Meno di un\'ora fa';
+    } else if (diffHours < 24) {
+      return `${diffHours} ${diffHours === 1 ? 'ora' : 'ore'} fa`;
+    } else if (diffDays < 7) {
+      return `${diffDays} ${diffDays === 1 ? 'giorno' : 'giorni'} fa`;
+    } else {
+      return date.toLocaleDateString('it-IT');
+    }
+  }
+
+  private formatDueDate(date: Date): string {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const taskDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (taskDate.getTime() === today.getTime()) {
+      return 'Scade oggi';
+    } else if (taskDate.getTime() === tomorrow.getTime()) {
+      return 'Scade domani';
+    } else if (taskDate < today) {
+      return 'Scaduto';
+    } else {
+      const diffDays = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return `Scade tra ${diffDays} giorni`;
+    }
   }
 }
 

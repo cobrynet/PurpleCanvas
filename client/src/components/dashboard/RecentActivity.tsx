@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface Activity {
   id: string;
-  type: 'campaign' | 'lead' | 'task';
+  type: 'campaign' | 'lead' | 'task' | 'opportunity';
   description: string;
   timestamp: string;
   user?: string;
@@ -26,6 +26,7 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
       case 'campaign': return Megaphone;
       case 'lead': return UserCheck;
       case 'task': return Check;
+      case 'opportunity': return UserCheck;
       default: return Check;
     }
   };
@@ -35,6 +36,7 @@ export function RecentActivity({ activities = [], upcomingDeadlines = [] }: Rece
       case 'campaign': return 'bg-primary/10 text-primary';
       case 'lead': return 'bg-secondary/10 text-secondary';
       case 'task': return 'bg-green-100 text-green-600';
+      case 'opportunity': return 'bg-amber-100 text-amber-600';
       default: return 'bg-muted text-muted-foreground';
     }
   };

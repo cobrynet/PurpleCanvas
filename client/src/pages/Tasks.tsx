@@ -327,15 +327,140 @@ export default function Tasks() {
     );
   };
 
-  const renderCalendarView = () => (
-    <div className="text-center py-12" data-testid="tasks-calendar-view">
-      <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-      <h3 className="text-lg font-semibold mb-2">Vista Calendario</h3>
-      <p className="text-muted-foreground">
-        La vista calendario sarà disponibile prossimamente
-      </p>
-    </div>
-  );
+  const renderCalendarView = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    // Generate calendar days for current month
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDay = firstDay.getDay(); // 0 = Sunday
+    
+    const calendar = [];
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startDay; i++) {
+      calendar.push(null);
+    }
+    
+    // Add all days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      calendar.push(day);
+    }
+    
+    // Get tasks for each day (timezone-safe local date comparison)
+    const toLocalYMD = (date: Date) => 
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+    const getTasksForDay = (day: number) => {
+      if (!day) return [];
+      const dayDate = new Date(currentYear, currentMonth, day);
+      const targetDateStr = toLocalYMD(dayDate);
+      
+      return (tasks as any[]).filter((task: any) => {
+        if (!task.dueAt) return false;
+        const taskDate = new Date(task.dueAt);
+        const taskDateStr = toLocalYMD(taskDate);
+        return taskDateStr === targetDateStr;
+      });
+    };
+    
+    const monthNames = [
+      "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+      "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ];
+    
+    return (
+      <div data-testid="tasks-calendar-view" className="bg-white rounded-lg border">
+        {/* Calendar Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h3 className="text-lg font-semibold">
+            {monthNames[currentMonth]} {currentYear}
+          </h3>
+          <div className="text-sm text-muted-foreground">
+            Attività programmate
+          </div>
+        </div>
+        
+        {/* Calendar Grid */}
+        <div className="p-4">
+          {/* Days of week header */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'].map((day) => (
+              <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          {/* Calendar Days */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendar.map((day, index) => {
+              const dayTasks = day ? getTasksForDay(day) : [];
+              const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+              
+              return (
+                <div
+                  key={index}
+                  className={`min-h-[80px] p-1 border rounded ${
+                    day ? 'bg-white hover:bg-gray-50' : 'bg-gray-50'
+                  } ${isToday ? 'ring-2 ring-primary' : ''}`}
+                  data-testid={day ? `calendar-day-${day}` : `calendar-empty-${index}`}
+                >
+                  {day && (
+                    <>
+                      <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+                        {day}
+                      </div>
+                      <div className="space-y-1">
+                        {dayTasks.slice(0, 3).map((task: any) => (
+                          <div
+                            key={task.id}
+                            className={`text-xs p-1 rounded truncate ${getPriorityColor(task.priority)}`}
+                            data-testid={`calendar-task-${task.id}`}
+                            title={task.title}
+                          >
+                            {task.title}
+                          </div>
+                        ))}
+                        {dayTasks.length > 3 && (
+                          <div className="text-xs text-muted-foreground">
+                            +{dayTasks.length - 3} altri
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Legend */}
+          <div className="mt-4 flex items-center space-x-4 text-sm">
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>
+              <span>P0 - Critica</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-orange-100 border border-orange-200 rounded"></div>
+              <span>P1 - Alta</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
+              <span>P2 - Media</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-blue-100 border border-blue-200 rounded"></div>
+              <span>P3 - Bassa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <MainLayout title="Task Manager" icon={CheckSquare}>

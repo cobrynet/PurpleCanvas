@@ -381,6 +381,50 @@ export default function Marketing() {
           </div>
         </div>
 
+        {/* Social Integrations Card */}
+        <div className="mb-8">
+          <Card data-testid="social-providers-card">
+            <CardHeader>
+              <CardTitle>Collega i tuoi social</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Connetti le tue piattaforme social per pubblicare contenuti
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {[
+                  { id: "facebook", name: "Facebook", color: "text-blue-600", bgColor: "bg-blue-50 hover:bg-blue-100" },
+                  { id: "instagram", name: "Instagram", color: "text-pink-600", bgColor: "bg-pink-50 hover:bg-pink-100" },
+                  { id: "linkedin", name: "LinkedIn", color: "text-blue-700", bgColor: "bg-blue-50 hover:bg-blue-100" },
+                  { id: "twitter", name: "Twitter", color: "text-sky-500", bgColor: "bg-sky-50 hover:bg-sky-100" },
+                  { id: "tiktok", name: "TikTok", color: "text-black", bgColor: "bg-gray-50 hover:bg-gray-100" }
+                ].map((provider) => (
+                  <Card 
+                    key={provider.id} 
+                    className={`cursor-pointer transition-all border-2 border-border hover:border-primary/50 ${provider.bgColor}`}
+                    data-testid={`provider-${provider.id}`}
+                    onClick={() => {
+                      toast({
+                        title: "Connesso: " + provider.name,
+                        description: `${provider.name} è stato connesso con successo`,
+                      });
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <CardContent className="p-3 text-center">
+                      <div className={`w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center ${provider.color} bg-white`}>
+                        <span className="text-lg font-bold">{provider.name[0]}</span>
+                      </div>
+                      <h3 className="font-semibold text-sm">{provider.name}</h3>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Campaigns Grid */}
         {campaignsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

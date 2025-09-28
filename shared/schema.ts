@@ -416,6 +416,11 @@ export const insertMarketingTaskSchema = createInsertSchema(marketingTasks).omit
   createdAt: true,
 });
 
+export const insertSocialPostSchema = createInsertSchema(socialPosts).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -431,6 +436,8 @@ export type Opportunity = typeof opportunities.$inferSelect;
 export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
 export type MarketingTask = typeof marketingTasks.$inferSelect;
 export type InsertMarketingTask = z.infer<typeof insertMarketingTaskSchema>;
+export type SocialPost = typeof socialPosts.$inferSelect;
+export type InsertSocialPost = z.infer<typeof insertSocialPostSchema>;
 export type Asset = typeof assets.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type OrgServiceOrder = typeof orgServiceOrders.$inferSelect;

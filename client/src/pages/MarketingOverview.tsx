@@ -4,8 +4,10 @@ import { TrendingUp, Users, Eye, MousePointer, Calendar as CalendarIcon, DollarS
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 // Mock data for KPIs
 const mockKPIs = [
@@ -109,13 +111,25 @@ export default function MarketingOverview() {
   return (
     <MainLayout title="Marketing Overview" icon={TrendingUp}>
       <div data-testid="marketing-overview-content">
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold" data-testid="page-title">Panoramica Marketing</h2>
-          <p className="text-muted-foreground" data-testid="page-subtitle">
-            Dashboard completa delle performance marketing
-          </p>
-        </div>
+        {/* Marketing Navigation Tabs */}
+        <Tabs defaultValue="overview" className="mb-6">
+          <TabsList className="grid w-fit grid-cols-2" data-testid="marketing-tabs">
+            <TabsTrigger value="overview" data-testid="tab-overview">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="campaigns" asChild data-testid="tab-campaigns">
+              <Link href="/marketing/campaigns">Campagne</Link>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview">
+            {/* Header */}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold" data-testid="page-title">Panoramica Marketing</h2>
+              <p className="text-muted-foreground" data-testid="page-subtitle">
+                Dashboard completa delle performance marketing
+              </p>
+            </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" data-testid="kpi-cards">
@@ -229,6 +243,8 @@ export default function MarketingOverview() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );

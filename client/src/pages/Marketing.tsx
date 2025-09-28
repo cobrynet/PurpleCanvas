@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -236,14 +238,26 @@ export default function Marketing() {
   return (
     <MainLayout title="Marketing" icon={Megaphone}>
       <div data-testid="marketing-content">
-        {/* Header with Action Buttons */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">Gestione Campagne</h2>
-            <p className="text-muted-foreground">
-              Crea e gestisci le tue campagne marketing
-            </p>
-          </div>
+        {/* Marketing Navigation Tabs */}
+        <Tabs defaultValue="campaigns" className="mb-6">
+          <TabsList className="grid w-fit grid-cols-2" data-testid="marketing-tabs">
+            <TabsTrigger value="overview" asChild data-testid="tab-overview">
+              <Link href="/marketing/overview">Overview</Link>
+            </TabsTrigger>
+            <TabsTrigger value="campaigns" data-testid="tab-campaigns">
+              Campagne
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="campaigns">
+            {/* Header with Action Buttons */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Gestione Campagne</h2>
+                <p className="text-muted-foreground">
+                  Crea e gestisci le tue campagne marketing
+                </p>
+              </div>
           <div className="flex space-x-3">
             <Dialog open={isPostModalOpen} onOpenChange={setIsPostModalOpen}>
               <DialogTrigger asChild>
@@ -531,6 +545,8 @@ export default function Marketing() {
             ))}
           </div>
         )}
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );

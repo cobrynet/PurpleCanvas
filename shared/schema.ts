@@ -28,6 +28,7 @@ export const agentPresenceStatusEnum = pgEnum('agent_presence_status', ['ONLINE'
 export const orderStatusEnum = pgEnum('order_status', ['REQUESTED', 'CONFIRMED', 'IN_PROGRESS', 'DELIVERED', 'CLOSED']);
 export const periodicityEnum = pgEnum('periodicity', ['ANNUALE', 'SEMESTRALE', 'QUADRIMESTRALE']);
 export const budgetCategoryEnum = pgEnum('budget_category', ['SOCIAL_ADS', 'FIERE', 'COMMERCIALE', 'ALTRO']);
+export const offlineActivityTypeEnum = pgEnum('offline_activity_type', ['FIERA', 'EVENTO', 'STAMPA', 'PR', 'SPONSORSHIP', 'DIRECT_MAIL', 'RADIO', 'TV', 'OUTDOOR', 'ALTRO']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -151,6 +152,21 @@ export const marketingMetrics = pgTable("marketing_metrics", {
 }, (table) => [
   index("idx_marketing_metrics_campaign_date").on(table.campaignId, table.date)
 ]);
+
+// Offline Activities
+export const offlineActivities = pgTable("offline_activities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: offlineActivityTypeEnum("type").notNull(),
+  activityDate: timestamp("activity_date").notNull(),
+  budget: integer("budget"), // in centesimi, optional
+  description: text("description"),
+  assetIds: jsonb("asset_ids"), // array of asset IDs for attachments
+  taskId: uuid("task_id").references(() => marketingTasks.id), // connected marketing task
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 // Social & Assets
 export const socialConnections = pgTable("social_connections", {
@@ -556,6 +572,11 @@ export const insertBudgetAllocationSchema = createInsertSchema(budgetAllocations
   createdAt: true,
 });
 
+export const insertOfflineActivitySchema = createInsertSchema(offlineActivities).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -589,3 +610,5 @@ export type GoalAttachment = typeof goalAttachments.$inferSelect;
 export type InsertGoalAttachment = z.infer<typeof insertGoalAttachmentSchema>;
 export type BudgetAllocation = typeof budgetAllocations.$inferSelect;
 export type InsertBudgetAllocation = z.infer<typeof insertBudgetAllocationSchema>;
+export type OfflineActivity = typeof offlineActivities.$inferSelect;
+export type InsertOfflineActivity = z.infer<typeof insertOfflineActivitySchema>;

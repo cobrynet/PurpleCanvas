@@ -336,22 +336,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload routes
-  app.post('/api/upload/init', isAuthenticated, async (req, res) => {
+  // Public object serving endpoint
+  app.get("/public-objects/:filePath(*)", async (req, res) => {
+    const filePath = req.params.filePath;
     try {
-      // Mock upload URL generation
-      const uploadUrl = `https://mock-storage.example.com/upload/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const file = await objectStorageService.searchPublicObject(filePath);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      objectStorageService.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error searching for public object:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Upload routes
+  app.post('/api/upload/init', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      const filename = req.body?.filename || 'file';
+      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename);
       
       res.json({
         uploadUrl,
-        fields: {
-          'Content-Type': 'application/octet-stream',
-          'x-amz-algorithm': 'AWS4-HMAC-SHA256',
-          'x-amz-credential': 'mock-credential',
-          'x-amz-date': new Date().toISOString(),
-          'policy': 'mock-policy',
-          'x-amz-signature': 'mock-signature'
-        }
+        publicUrl,
+        objectPath,
+        method: 'PUT'
       });
     } catch (error) {
       console.error('Error generating upload URL:', error);
@@ -364,25 +379,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const body = req.body;
       
-      // Mock asset data
-      const mockAsset = {
+      if (!body.url || !body.objectPath) {
+        return res.status(400).json({ error: 'Missing required fields: url and objectPath' });
+      }
+
+      // Determine file type from mime type
+      let assetType: 'IMAGE' | 'VIDEO' | 'DOC' | 'ARCHIVE' = 'DOC';
+      if (body.mimeType?.startsWith('image/')) {
+        assetType = 'IMAGE';
+      } else if (body.mimeType?.startsWith('video/')) {
+        assetType = 'VIDEO';
+      } else if (body.mimeType?.includes('zip') || body.mimeType?.includes('rar') || body.mimeType?.includes('7z')) {
+        assetType = 'ARCHIVE';
+      }
+
+      // Real asset data from actual upload
+      const assetData = {
         organizationId: body.organizationId || '00000000-0000-0000-0000-000000000001',
-        type: 'IMAGE' as const,
-        mimeType: body.mimeType || 'image/jpeg',
-        sizeBytes: body.sizeBytes || 1024000,
-        width: body.width || 800,
-        height: body.height || 600,
-        checksumSha256: body.checksumSha256 || `mock-checksum-${Date.now()}`,
-        url: body.url || `https://mock-storage.example.com/assets/${Date.now()}.jpg`,
-        thumbUrl: `https://mock-storage.example.com/thumbnails/${Date.now()}_thumb.jpg`,
-        title: body.title || 'Mock Asset',
-        tags: body.tags || ['mock', 'upload'],
+        type: assetType,
+        mimeType: body.mimeType || 'application/octet-stream',
+        sizeBytes: body.sizeBytes || 0,
+        width: body.width || null,
+        height: body.height || null,
+        checksumSha256: body.checksumSha256 || `checksum-${Date.now()}`,
+        url: body.url, // Real URL from object storage
+        thumbUrl: body.thumbUrl || null,
+        title: body.title || body.filename || 'Uploaded File',
+        tags: body.tags || ['upload'],
         folder: body.folder || 'uploads',
-        ownerId: body.ownerId || userId
+        ownerId: userId
       };
 
       // Save asset using Drizzle
-      const [asset] = await db.insert(assets).values(mockAsset).returning();
+      const [asset] = await db.insert(assets).values(assetData).returning();
 
       res.json({
         success: true,
@@ -391,7 +420,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url: asset.url,
           type: asset.type,
           title: asset.title,
-          createdAt: asset.createdAt
+          createdAt: asset.createdAt,
+          objectPath: body.objectPath
         }
       });
     } catch (error) {

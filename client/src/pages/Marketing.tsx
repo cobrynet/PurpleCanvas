@@ -85,53 +85,70 @@ export default function Marketing() {
     try {
       setUploadProgress(true);
       
-      // Step 1: Get upload URL
+      // Step 1: Get upload URL from backend
       const initResponse = await fetch("/api/upload/init", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name })
       });
       
       if (!initResponse.ok) {
         throw new Error("Failed to get upload URL");
       }
       
-      const initData = await initResponse.json();
+      const { uploadUrl, publicUrl, objectPath } = await initResponse.json();
       
-      // Step 2: Complete upload with file data
-      const uploadData = {
+      // Step 2: Upload file directly to object storage
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload file to storage");
+      }
+      
+      // Step 3: Complete upload by notifying backend
+      const completeData = {
         title: postForm.title || file.name,
+        filename: file.name,
         mimeType: file.type,
         sizeBytes: file.size,
+        url: publicUrl,
+        objectPath: objectPath,
         organizationId: currentOrg?.id
       };
       
       const completeResponse = await fetch("/api/upload/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(uploadData)
+        body: JSON.stringify(completeData)
       });
       
       if (!completeResponse.ok) {
         throw new Error("Failed to complete upload");
       }
       
-      const completeData = await completeResponse.json();
+      const result = await completeResponse.json();
       
-      if (!completeData.success) {
+      if (!result.success) {
         throw new Error("Failed to complete upload");
       }
       
       toast({
         title: "Upload completato",
-        description: "File caricato con successo"
+        description: `File "${file.name}" caricato con successo`
       });
       
-      return completeData.asset;
+      return result.asset;
     } catch (error) {
       console.error("Upload error:", error);
       toast({
         title: "Errore upload",
-        description: "Impossibile caricare il file",
+        description: `Impossibile caricare il file: ${(error as Error).message}`,
         variant: "destructive"
       });
       throw error;

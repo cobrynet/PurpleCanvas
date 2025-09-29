@@ -756,7 +756,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
       
-      const updates = req.body;
+      // Parse and validate updates using the same schema as creation
+      const updates = insertCampaignSchema.omit({ organizationId: true, type: true }).parse(req.body);
       const updatedCampaign = await storage.updateCampaign(campaignId, orgId, updates);
       
       res.json(updatedCampaign);

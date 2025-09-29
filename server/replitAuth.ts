@@ -359,6 +359,44 @@ export async function setupAuth(app: Express) {
   });
 }
 
+// Middleware to extract and validate current organization from header
+export const withCurrentOrganization: RequestHandler = async (req: any, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const userId = req.user.id || req.user.claims?.sub;
+  const orgHeader = req.headers['x-organization-id'];
+
+  if (orgHeader && typeof orgHeader === 'string') {
+    try {
+      // Verify user has access to this organization
+      const membership = await storage.getUserMembership(userId, orgHeader);
+      if (membership) {
+        req.currentOrganization = orgHeader;
+        req.currentMembership = membership;
+        return next();
+      }
+    } catch (error) {
+      console.error("Error validating organization:", error);
+    }
+  }
+
+  // Fallback: use user's first organization
+  try {
+    const userOrgs = await storage.getUserOrganizations(userId);
+    if (userOrgs.length > 0) {
+      req.currentOrganization = userOrgs[0].id;
+      req.currentMembership = userOrgs[0].membership;
+      return next();
+    }
+  } catch (error) {
+    console.error("Error fetching user organizations:", error);
+  }
+
+  return res.status(403).json({ message: "No organization access" });
+};
+
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 

@@ -23,7 +23,9 @@ import Goals from "@/pages/Goals";
 import OfflineActivities from "@/pages/OfflineActivities";
 import SignIn from "@/pages/SignIn";
 import SignUp from "@/pages/SignUp";
+import OrganizationSelectorPage from "@/pages/OrganizationSelector";
 import { OrganizationProvider } from "@/hooks/useOrganization";
+import { OrganizationGuard } from "@/components/OrganizationGuard";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -39,28 +41,38 @@ function Router() {
         </Switch>
       ) : (
         <>
-          <AppLayout>
-            <Switch>
-              <Route path="/" component={Dashboard} />
-              <Route path="/goals" component={Goals} />
-              <Route path="/marketing/overview" component={MarketingOverview} />
-              <Route path="/marketing/offline" component={OfflineActivities} />
-              <Route path="/marketing" component={Marketing} />
-              <Route path="/crm/leads" component={CRM} />
-              <Route path="/crm/opportunities" component={CRM} />
-              <Route path="/crm/pipeline" component={CRM} />
-              <Route path="/crm/cadences" component={CRM} />
-              <Route path="/tasks" component={Tasks} />
-              <Route path="/marketplace" component={Marketplace} />
-              <Route path="/notifications" component={Notifications} />
-              <Route path="/chat" component={Chat} />
-              <Route path="/console" component={ConsoleOperatori} />
-              <Route path="/settings" component={Settings} />
-              <Route component={NotFound} />
-            </Switch>
-          </AppLayout>
-          {/* Chat widget appears on all authenticated pages */}
-          <ChatWidget />
+          <Switch>
+            {/* Organization selector page (no guard needed) */}
+            <Route path="/select-organization" component={OrganizationSelectorPage} />
+            
+            {/* Protected routes with organization guard */}
+            <Route>
+              <OrganizationGuard>
+                <AppLayout>
+                  <Switch>
+                    <Route path="/" component={Dashboard} />
+                    <Route path="/goals" component={Goals} />
+                    <Route path="/marketing/overview" component={MarketingOverview} />
+                    <Route path="/marketing/offline" component={OfflineActivities} />
+                    <Route path="/marketing" component={Marketing} />
+                    <Route path="/crm/leads" component={CRM} />
+                    <Route path="/crm/opportunities" component={CRM} />
+                    <Route path="/crm/pipeline" component={CRM} />
+                    <Route path="/crm/cadences" component={CRM} />
+                    <Route path="/tasks" component={Tasks} />
+                    <Route path="/marketplace" component={Marketplace} />
+                    <Route path="/notifications" component={Notifications} />
+                    <Route path="/chat" component={Chat} />
+                    <Route path="/console" component={ConsoleOperatori} />
+                    <Route path="/settings" component={Settings} />
+                    <Route component={NotFound} />
+                  </Switch>
+                </AppLayout>
+                {/* Chat widget appears on all authenticated pages */}
+                <ChatWidget />
+              </OrganizationGuard>
+            </Route>
+          </Switch>
         </>
       )}
       <Route component={NotFound} />

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, withCurrentOrganization } from "./replitAuth";
 import { db } from "./db";
 import { organizations } from "@shared/schema";
 import { count } from "drizzle-orm";
@@ -376,19 +376,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Marketing ADV Campaigns - Mock API
-  app.get('/api/marketing/campaigns', isAuthenticated, async (req: any, res) => {
+  // Marketing ADV Campaigns - using current organization
+  app.get('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      
-      // Get user's first organization for demo purposes
-      const userOrgs = await storage.getUserOrganizations(userId);
-      if (!userOrgs.length) {
-        return res.status(403).json({ message: "No organization access" });
-      }
-      
-      const orgId = userOrgs[0].id;
-      const membership = userOrgs[0].membership;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
       if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
@@ -405,17 +397,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/marketing/campaigns', isAuthenticated, async (req: any, res) => {
+  app.post('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      
-      const userOrgs = await storage.getUserOrganizations(userId);
-      if (!userOrgs.length) {
-        return res.status(403).json({ message: "No organization access" });
-      }
-      
-      const orgId = userOrgs[0].id;
-      const membership = userOrgs[0].membership;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
       if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
@@ -454,18 +439,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/marketing/campaigns/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/marketing/campaigns/:id', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
       const campaignId = req.params.id;
-      
-      const userOrgs = await storage.getUserOrganizations(userId);
-      if (!userOrgs.length) {
-        return res.status(403).json({ message: "No organization access" });
-      }
-      
-      const orgId = userOrgs[0].id;
-      const membership = userOrgs[0].membership;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
       if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });

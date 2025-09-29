@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OrganizationSelector } from "@/components/OrganizationSelector";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -101,6 +102,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-black/95 dark:supports-[backdrop-filter]:bg-black/60">
           <div className="flex h-16 items-center justify-end px-6">
             <div className="flex items-center space-x-4">
+              {/* Organization Selector */}
+              <OrganizationSelector />
+              
               {/* Impostazioni */}
               <Button 
                 variant="ghost" 

@@ -23,6 +23,7 @@ import Goals from "@/pages/Goals";
 import OfflineActivities from "@/pages/OfflineActivities";
 import SignIn from "@/pages/SignIn";
 import SignUp from "@/pages/SignUp";
+import { OrganizationProvider } from "@/hooks/useOrganization";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,10 +72,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="stratikey-ui-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <OrganizationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </OrganizationProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

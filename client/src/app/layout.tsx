@@ -30,7 +30,7 @@ interface AppLayoutProps {
 }
 
 const sidebarItems = [
-  { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/" },
+  { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/goals" },
   { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing" },
   { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
   { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
@@ -44,8 +44,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
 
   const isActiveRoute = (href: string, itemId?: string) => {
-    // Only highlight "obiettivi" when on home route
-    if (location === "/") return itemId === "obiettivi";
+    // Highlight "obiettivi" when on goals route
+    if (location === "/goals") return itemId === "obiettivi";
     if (href !== "/" && location.startsWith(href)) return true;
     // Special case for Commerciale to highlight on any CRM route
     if (itemId === "commerciale" && location.startsWith("/crm")) return true;

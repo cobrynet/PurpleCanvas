@@ -19,6 +19,7 @@ import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import ConsoleOperatori from "@/pages/ConsoleOperatori";
 import Settings from "@/pages/Settings";
+import Goals from "@/pages/Goals";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -32,6 +33,7 @@ function Router() {
           <AppLayout>
             <Switch>
               <Route path="/" component={Dashboard} />
+              <Route path="/goals" component={Goals} />
               <Route path="/marketing/overview" component={MarketingOverview} />
               <Route path="/marketing" component={Marketing} />
               <Route path="/crm/leads" component={CRM} />

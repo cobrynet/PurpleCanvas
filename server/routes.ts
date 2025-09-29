@@ -11,7 +11,8 @@ import {
   insertCampaignSchema,
   insertLeadSchema,
   insertOpportunitySchema,
-  insertMarketingTaskSchema,\n  insertGoalSchema 
+  insertMarketingTaskSchema,
+  insertGoalSchema 
 } from "@shared/schema";
 import { assets } from "@shared/schema";
 import { createSocialPost, getSocialPosts } from "../app/api/social/posts/route";

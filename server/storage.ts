@@ -56,6 +56,8 @@ import {
   type InsertConversationMessage,
   type AgentPresence,
   type InsertAgentPresence,
+  type UserSettings,
+  type OrganizationSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull, sql } from "drizzle-orm";
@@ -186,6 +188,12 @@ export interface IStorage {
   getAvailableAgents(): Promise<AgentPresence[]>;
   incrementAgentChatCount(agentId: string): Promise<void>;
   decrementAgentChatCount(agentId: string): Promise<void>;
+
+  // Settings operations
+  getUserSettings(userId: string): Promise<UserSettings | null>;
+  updateUserSettings(userId: string, settings: Partial<UserSettings>): Promise<UserSettings>;
+  getOrganizationSettings(orgId: string): Promise<OrganizationSettings | null>;
+  updateOrganizationSettings(orgId: string, settings: Partial<OrganizationSettings>): Promise<OrganizationSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -974,6 +982,81 @@ export class DatabaseStorage implements IStorage {
         lastActiveAt: new Date()
       })
       .where(eq(agentPresence.agentId, agentId));
+  }
+
+  // Settings operations
+  async getUserSettings(userId: string): Promise<UserSettings | null> {
+    const [user] = await db
+      .select({ settings: users.settings })
+      .from(users)
+      .where(eq(users.id, userId));
+    
+    return user?.settings as UserSettings || null;
+  }
+
+  async updateUserSettings(userId: string, settingsUpdate: Partial<UserSettings>): Promise<UserSettings> {
+    // Get current settings first
+    const currentUser = await this.getUser(userId);
+    const currentSettings = (currentUser?.settings as UserSettings) || {};
+    
+    // Deep merge the settings
+    const mergedSettings = this.deepMerge(currentSettings, settingsUpdate);
+    
+    // Update the user
+    const [updated] = await db
+      .update(users)
+      .set({ 
+        settings: mergedSettings,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning({ settings: users.settings });
+    
+    return updated.settings as UserSettings;
+  }
+
+  async getOrganizationSettings(orgId: string): Promise<OrganizationSettings | null> {
+    const [org] = await db
+      .select({ settings: organizations.settings })
+      .from(organizations)
+      .where(eq(organizations.id, orgId));
+    
+    return org?.settings as OrganizationSettings || null;
+  }
+
+  async updateOrganizationSettings(orgId: string, settingsUpdate: Partial<OrganizationSettings>): Promise<OrganizationSettings> {
+    // Get current settings first
+    const currentOrg = await this.getOrganization(orgId);
+    const currentSettings = (currentOrg?.settings as OrganizationSettings) || {};
+    
+    // Deep merge the settings
+    const mergedSettings = this.deepMerge(currentSettings, settingsUpdate);
+    
+    // Update the organization
+    const [updated] = await db
+      .update(organizations)
+      .set({ 
+        settings: mergedSettings
+      })
+      .where(eq(organizations.id, orgId))
+      .returning({ settings: organizations.settings });
+    
+    return updated.settings as OrganizationSettings;
+  }
+
+  // Helper method for deep merging settings objects
+  private deepMerge(target: any, source: any): any {
+    const result = { ...target };
+    
+    for (const key in source) {
+      if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        result[key] = this.deepMerge(target[key] || {}, source[key]);
+      } else {
+        result[key] = source[key];
+      }
+    }
+    
+    return result;
   }
 }
 

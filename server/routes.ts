@@ -17,7 +17,9 @@ import {
   insertOfflineActivitySchema,
   insertConversationSchema,
   insertConversationMessageSchema,
-  insertAgentPresenceSchema 
+  insertAgentPresenceSchema,
+  userSettingsSchema,
+  organizationSettingsSchema
 } from "@shared/schema";
 import { assets } from "@shared/schema";
 // Social media post functions would be imported here if they existed
@@ -2003,6 +2005,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting social connection:', error);
       res.status(500).json({ error: 'Failed to delete social connection' });
+    }
+  });
+
+  // Settings API Routes
+
+  // Get user settings
+  app.get('/api/settings/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const settings = await storage.getUserSettings(userId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error('Error getting user settings:', error);
+      res.status(500).json({ error: 'Failed to get user settings' });
+    }
+  });
+
+  // Update user settings
+  app.patch('/api/settings/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Validate the incoming settings data
+      const validatedSettings = userSettingsSchema.partial().parse(req.body);
+      
+      const updatedSettings = await storage.updateUserSettings(userId, validatedSettings);
+      res.json(updatedSettings);
+    } catch (error: any) {
+      console.error('Error updating user settings:', error);
+      
+      // Check if it's a validation error (Zod error)
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Invalid settings data', 
+          details: error.errors 
+        });
+      }
+      
+      // Server error
+      res.status(500).json({ error: 'Failed to update user settings' });
+    }
+  });
+
+  // Get organization settings
+  app.get('/api/settings/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const organizationId = req.currentOrganization;
+      const membership = req.membership;
+      
+      const settings = await storage.getOrganizationSettings(organizationId);
+      
+      if (!settings) {
+        return res.json({});
+      }
+      
+      // Create a safe copy of settings - redact sensitive data for non-admins
+      const safeSettings = { ...settings };
+      
+      if (!['ORG_ADMIN', 'SUPER_ADMIN'].includes(membership?.role)) {
+        // Redact sensitive data for non-admin members
+        if (safeSettings.developer) {
+          if (safeSettings.developer.apiKeys) {
+            safeSettings.developer.apiKeys = safeSettings.developer.apiKeys.map(key => ({
+              ...key,
+              key: '***REDACTED***',
+            }));
+          }
+          if (safeSettings.developer.webhooks?.secret) {
+            safeSettings.developer.webhooks.secret = '***REDACTED***';
+          }
+        }
+      }
+      
+      res.json(safeSettings);
+    } catch (error) {
+      console.error('Error getting organization settings:', error);
+      res.status(500).json({ error: 'Failed to get organization settings' });
+    }
+  });
+
+  // Update organization settings (requires ORG_ADMIN or SUPER_ADMIN)
+  app.patch('/api/settings/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const organizationId = req.currentOrganization;
+      const membership = req.membership;
+      
+      // Check if user has permission to update organization settings
+      if (!['ORG_ADMIN', 'SUPER_ADMIN'].includes(membership?.role)) {
+        return res.status(403).json({ error: 'Insufficient permissions to update organization settings' });
+      }
+      
+      // Validate the incoming settings data
+      const validatedSettings = organizationSettingsSchema.partial().parse(req.body);
+      
+      const updatedSettings = await storage.updateOrganizationSettings(organizationId, validatedSettings);
+      
+      // Redact sensitive data in response
+      const safeSettings = { ...updatedSettings };
+      if (safeSettings.developer) {
+        if (safeSettings.developer.apiKeys) {
+          safeSettings.developer.apiKeys = safeSettings.developer.apiKeys.map(key => ({
+            ...key,
+            key: '***REDACTED***',
+          }));
+        }
+        if (safeSettings.developer.webhooks?.secret) {
+          safeSettings.developer.webhooks.secret = '***REDACTED***';
+        }
+      }
+      
+      res.json(safeSettings);
+    } catch (error: any) {
+      console.error('Error updating organization settings:', error);
+      
+      // Check if it's a validation error (Zod error)
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Invalid settings data', 
+          details: error.errors 
+        });
+      }
+      
+      // Server error
+      res.status(500).json({ error: 'Failed to update organization settings' });
+    }
+  });
+
+  // Get organization members (for user management section)
+  app.get('/api/settings/organization/members', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const organizationId = req.currentOrganization;
+      const membership = req.membership;
+      
+      // Check if user has permission to view members
+      if (!['ORG_ADMIN', 'SUPER_ADMIN'].includes(membership?.role)) {
+        return res.status(403).json({ error: 'Insufficient permissions to view organization members' });
+      }
+      
+      const members = await storage.getOrganizationMembers(organizationId);
+      
+      // Remove sensitive user data
+      const safeMembers = members.map(member => ({
+        ...member,
+        user: {
+          id: member.user.id,
+          email: member.user.email,
+          firstName: member.user.firstName,
+          lastName: member.user.lastName,
+          createdAt: member.user.createdAt,
+        }
+      }));
+      
+      res.json(safeMembers);
+    } catch (error) {
+      console.error('Error getting organization members:', error);
+      res.status(500).json({ error: 'Failed to get organization members' });
     }
   });
 

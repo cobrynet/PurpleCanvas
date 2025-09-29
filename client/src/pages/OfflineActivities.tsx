@@ -17,9 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Plus, MapPin, Euro, FileText, Calendar } from "lucide-react";
+import { CalendarIcon, Plus, MapPin, Euro, FileText, Calendar, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { useOrganization } from "@/hooks/useOrganization";
+import type { UploadResult } from "@uppy/core";
 
 type OfflineActivity = {
   id: string;
@@ -67,10 +70,12 @@ const getActivityTypeColor = (type: string) => {
 
 export default function OfflineActivities() {
   const { user, isAuthenticated } = useAuth();
+  const { selectedOrganization } = useOrganization();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [uploadedAssets, setUploadedAssets] = useState<string[]>([]);
   
-  const currentOrg = user?.organizations?.[0];
+  const currentOrg = selectedOrganization;
   
   const [activityForm, setActivityForm] = useState({
     title: "",
@@ -85,7 +90,7 @@ export default function OfflineActivities() {
     data: activities = [], 
     isLoading: activitiesLoading 
   } = useQuery({
-    queryKey: ["/api/organizations", currentOrg?.id, "offline-activities"],
+    queryKey: ["/api/offline-activities"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
   });
@@ -93,11 +98,11 @@ export default function OfflineActivities() {
   // Create offline activity mutation
   const createActivityMutation = useMutation({
     mutationFn: async (activityData: any) => {
-      return await apiRequest(`/api/organizations/${currentOrg?.id}/offline-activities`, "POST", activityData);
+      return await apiRequest("/api/offline-activities", "POST", activityData);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "offline-activities"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/offline-activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       
       toast({
         title: "Attività creata!",
@@ -112,6 +117,7 @@ export default function OfflineActivities() {
         budget: "",
         description: ""
       });
+      setUploadedAssets([]);
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
@@ -122,6 +128,51 @@ export default function OfflineActivities() {
       });
     },
   });
+
+  // Handle file upload
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("/api/upload/init", "POST", {
+      filename: "attachment"
+    }) as any;
+    return {
+      method: "PUT" as const,
+      url: response.uploadUrl,
+    };
+  };
+
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    const uploadedFiles = result.successful || [];
+    
+    for (const file of uploadedFiles) {
+      try {
+        // Complete the upload process and save asset
+        const response = await apiRequest("/api/upload/complete", "POST", {
+          objectPath: file.meta?.objectPath || `/objects/uploads/${file.id}`,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          filename: file.name,
+          title: file.name,
+          tags: ["offline-activity", "attachment"],
+          folder: "offline-activities"
+        }) as any;
+
+        if (response.success && response.asset) {
+          setUploadedAssets(prev => [...prev, response.asset.id]);
+          toast({
+            title: "File caricato!",
+            description: `Il file "${file.name}" è stato caricato con successo.`,
+          });
+        }
+      } catch (error) {
+        console.error("Error completing upload:", error);
+        toast({
+          title: "Errore upload",
+          description: `Errore durante il caricamento di "${file.name}".`,
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +210,7 @@ export default function OfflineActivities() {
       activityDate: new Date(activityForm.activityDate).toISOString(),
       budget: activityForm.budget ? Math.round(parseFloat(activityForm.budget) * 100) : null, // Convert to centesimi
       description: activityForm.description || null,
-      assetIds: null // TODO: implement file upload
+      assetIds: uploadedAssets.length > 0 ? uploadedAssets : null
     };
 
     createActivityMutation.mutate(activityData);
@@ -277,6 +328,32 @@ export default function OfflineActivities() {
                     data-testid="activity-description-input"
                     rows={4}
                   />
+                </div>
+
+                {/* File Upload */}
+                <div className="space-y-2">
+                  <Label className="flex items-center space-x-2">
+                    <Upload className="w-4 h-4" />
+                    <span>Allegati (PDF, immagini, video)</span>
+                  </Label>
+                  <div className="text-sm text-gray-600 mb-2">
+                    Carica documenti, brochure, immagini o video relativi all'attività offline
+                  </div>
+                  <ObjectUploader
+                    maxNumberOfFiles={5}
+                    maxFileSize={50 * 1024 * 1024} // 50MB
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete}
+                    buttonClassName="w-full"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      <span>Carica allegati</span>
+                      {uploadedAssets.length > 0 && (
+                        <Badge variant="secondary">{uploadedAssets.length} file caricati</Badge>
+                      )}
+                    </div>
+                  </ObjectUploader>
                 </div>
 
                 <div className="flex justify-end space-x-2">

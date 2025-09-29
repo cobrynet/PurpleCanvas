@@ -703,23 +703,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload routes
-  app.post('/api/upload/init', isAuthenticated, async (req: any, res) => {
+  // Private object serving endpoint for uploaded assets
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const { organizationId, filename } = req.body;
-      
-      if (!organizationId) {
-        return res.status(400).json({ error: 'Organization ID is required' });
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
       }
       
-      // Verify user has access to this organization
-      const userOrgs = await storage.getUserOrganizations(userId);
-      const hasAccess = userOrgs.some(org => org.id === organizationId);
+      const objectPath = req.path; // This includes "/objects/" prefix
       
-      if (!hasAccess) {
-        return res.status(403).json({ error: 'Access denied to this organization' });
+      const { ObjectStorageService } = await import('./objectStorage');
+      const { ObjectPermission } = await import('./objectAcl');
+      const objectStorageService = new ObjectStorageService();
+      
+      try {
+        const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+        const canAccess = await objectStorageService.canAccessObjectEntity({
+          objectFile,
+          userId: userId,
+          requestedPermission: ObjectPermission.READ,
+        });
+        
+        if (!canAccess) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        
+        await objectStorageService.downloadObject(objectFile, res);
+      } catch (error) {
+        console.error("Error serving object:", error);
+        if (error.name === 'ObjectNotFoundError') {
+          return res.status(404).json({ error: "Object not found" });
+        }
+        return res.status(500).json({ error: "Internal server error" });
       }
+    } catch (error) {
+      console.error("Error in object serving endpoint:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Upload routes
+  app.post('/api/upload/init', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const { filename } = req.body;
       
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
@@ -737,21 +764,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/upload/complete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/upload/complete', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const orgId = req.currentOrganization;
       const body = req.body;
       
-      if (!body.objectPath || !body.organizationId) {
-        return res.status(400).json({ error: 'Missing required fields: objectPath and organizationId' });
-      }
-      
-      // Verify user has access to this organization
-      const userOrgs = await storage.getUserOrganizations(userId);
-      const hasAccess = userOrgs.some(org => org.id === body.organizationId);
-      
-      if (!hasAccess) {
-        return res.status(403).json({ error: 'Access denied to this organization' });
+      if (!body.objectPath) {
+        return res.status(400).json({ error: 'Missing required field: objectPath' });
       }
 
       // Determine file type from mime type
@@ -764,9 +784,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assetType = 'ARCHIVE';
       }
 
+      // Set ACL policy for uploaded object
+      try {
+        const { ObjectStorageService } = await import('./objectStorage');
+        const objectStorageService = new ObjectStorageService();
+        
+        await objectStorageService.trySetObjectEntityAclPolicy(body.objectPath, {
+          owner: userId,
+          visibility: "private", // Private by default for user uploads
+        });
+      } catch (error) {
+        console.error('Error setting ACL policy:', error);
+        // Continue with asset creation even if ACL fails
+      }
+
       // Create asset data with normalized object path for serving
       const assetData = {
-        organizationId: body.organizationId,
+        organizationId: orgId,
         type: assetType,
         mimeType: body.mimeType || 'application/octet-stream',
         sizeBytes: body.sizeBytes || 0,

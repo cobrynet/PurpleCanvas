@@ -27,6 +27,7 @@ import OrganizationSelectorPage from "@/pages/OrganizationSelector";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OrganizationGuard } from "@/components/OrganizationGuard";
 import { NotificationManager } from "@/components/NotificationManager";
+import { NotificationTestButton } from "@/components/NotificationTestButton";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -89,6 +90,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <NotificationManager />
+            <NotificationTestButton />
             <Router />
           </TooltipProvider>
         </OrganizationProvider>

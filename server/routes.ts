@@ -1245,15 +1245,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { insertNotificationSchema } = await import('@shared/schema');
       const organizationId = req.currentOrganization;
-      const senderId = req.user.claims.sub;
+      const userId = req.user.claims.sub; // Derive userId from authenticated user, ignore client input
       
       const body = insertNotificationSchema.parse({
         ...req.body,
         organizationId,
+        userId, // Always use authenticated user's ID for security
       });
       
       const notification = await storage.createNotification(body);
       
+      // Prevent caching to avoid 304 responses with body
+      res.set('Cache-Control', 'no-store');
       res.json({
         success: true,
         notification
@@ -1272,6 +1275,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const notifications = await storage.getNotifications(userId, organizationId);
       const unreadCount = await storage.getUnreadNotificationsCount(userId, organizationId);
       
+      // Prevent caching to ensure real-time updates
+      res.set('Cache-Control', 'no-store');
       res.json({
         notifications,
         unreadCount
@@ -1294,6 +1299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Notification not found' });
       }
       
+      // Prevent caching to ensure immediate updates
+      res.set('Cache-Control', 'no-store');
       res.json({
         success: true,
         notification

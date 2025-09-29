@@ -8,7 +8,6 @@ export interface NotificationsResponse {
 }
 
 export interface SendNotificationData {
-  userId: string;
   type?: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
   title: string;
   message: string;

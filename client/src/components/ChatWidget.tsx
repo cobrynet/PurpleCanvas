@@ -6,28 +6,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import type { Conversation, ConversationMessage } from "@shared/schema";
 
-interface Message {
+// Local message interface for chat UI - compatible with ConversationMessage
+interface ChatMessage {
   id: string;
-  text: string;
-  sender: 'user' | 'francesca' | 'system';
-  timestamp: string;
-  isEscalated?: boolean;
+  content: string;
+  senderType: 'user' | 'francesca' | 'system';
+  createdAt: string;
+  isEscalated?: boolean; // UI-only flag
 }
 
-interface Conversation {
+// Local conversation interface for chat UI  
+interface ChatConversation {
   id: string;
-  messages: Message[];
-  status: 'active' | 'escalated' | 'closed';
+  status: 'OPEN' | 'PENDING' | 'CLOSED' | 'ESCALATED';
   escalatedAt?: string;
 }
 
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [conversation, setConversation] = useState<ChatConversation | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isEscalating, setIsEscalating] = useState(false);
   const escalatingRef = useRef(false);
@@ -35,11 +37,11 @@ export function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const GREETING_MESSAGE: Message = {
+  const GREETING_MESSAGE: ChatMessage = {
     id: "greeting",
-    text: "Ciao, piacere sono Francesca. Come posso aiutarti?",
-    sender: 'francesca',
-    timestamp: new Date().toISOString()
+    content: "Ciao, piacere sono Francesca. Come posso aiutarti?",
+    senderType: 'francesca',
+    createdAt: new Date().toISOString()
   };
 
   useEffect(() => {
@@ -59,31 +61,38 @@ export function ChatWidget() {
 
   const initializeConversation = async () => {
     try {
-      const response = await apiRequest("POST", "/api/conversations", { type: "chat_start" });
+      const response = await apiRequest("POST", "/api/conversations", { 
+        channel: "WIDGET",
+        subject: "Chat Assistenza"
+      });
       
       const newConversation = await response.json() as Conversation;
-      setConversation(newConversation);
+      setConversation({
+        id: newConversation.id,
+        status: newConversation.status || 'OPEN',
+        escalatedAt: newConversation.escalatedAt ? (typeof newConversation.escalatedAt === 'string' ? newConversation.escalatedAt : newConversation.escalatedAt.toISOString()) : undefined
+      });
       setMessages([GREETING_MESSAGE]);
     } catch (error) {
       console.error("Failed to initialize conversation:", error);
-      // Fallback to local conversation
-      setMessages([GREETING_MESSAGE]);
-      setConversation({
-        id: `local-${Date.now()}`,
-        messages: [GREETING_MESSAGE],
-        status: 'active'
-      });
+      // Show error message in chat instead of fallback
+      setMessages([{
+        id: 'error-init',
+        content: 'Errore nel connettersi al servizio. Riprova più tardi.',
+        senderType: 'system',
+        createdAt: new Date().toISOString()
+      }]);
     }
   };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || isLoading) return;
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
-      text: newMessage.trim(),
-      sender: 'user',
-      timestamp: new Date().toISOString()
+      content: newMessage.trim(),
+      senderType: 'user',
+      createdAt: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -92,42 +101,65 @@ export function ChatWidget() {
 
     try {
       // Send message to API
-      const response = await apiRequest("POST", `/api/conversations/${conversation?.id || 'local'}/messages`, { 
-        text: userMessage.text,
-        sender: 'user'
+      if (!conversation?.id) {
+        throw new Error("No conversation initialized");
+      }
+      
+      const response = await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, { 
+        content: userMessage.content,
+        senderType: 'user'
       });
 
-      // Mock response from Francesca
-      setTimeout(() => {
-        const francescaResponse = generateFrancescaResponse(userMessage.text);
-        setMessages(prev => [...prev, francescaResponse]);
-        setIsLoading(false);
-        
-        // Check if escalation should happen
-        if (shouldTriggerEscalation(userMessage.text) && !escalatingRef.current) {
-          // Clear any existing escalation timer
-          if (escalationTimerRef.current) {
-            clearTimeout(escalationTimerRef.current);
-          }
-          // Schedule new escalation
-          escalationTimerRef.current = window.setTimeout(() => {
-            triggerEscalation();
-          }, 1000);
+      // Check if escalation should happen
+      if (shouldTriggerEscalation(userMessage.content) && !escalatingRef.current) {
+        // Clear any existing escalation timer
+        if (escalationTimerRef.current) {
+          clearTimeout(escalationTimerRef.current);
         }
+        // Schedule new escalation
+        escalationTimerRef.current = window.setTimeout(() => {
+          triggerEscalation();
+        }, 1000);
+      }
+
+      // Generate automatic response from Francesca
+      setTimeout(async () => {
+        try {
+          const francescaResponse = generateFrancescaResponse(userMessage.content);
+          
+          // Send Francesca's response to API
+          await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+            content: francescaResponse.content,
+            senderType: 'francesca'
+          });
+          
+          // Add to local state
+          setMessages(prev => [...prev, francescaResponse]);
+        } catch (error) {
+          console.error("Failed to send Francesca response:", error);
+          // Add response anyway for UX
+          const francescaResponse = generateFrancescaResponse(userMessage.content);
+          setMessages(prev => [...prev, francescaResponse]);
+        }
+        setIsLoading(false);
       }, 1000 + Math.random() * 2000); // Random delay between 1-3 seconds
 
     } catch (error) {
       console.error("Failed to send message:", error);
-      // Fallback to local response
-      setTimeout(() => {
-        const francescaResponse = generateFrancescaResponse(userMessage.text);
-        setMessages(prev => [...prev, francescaResponse]);
-        setIsLoading(false);
-      }, 1500);
+      setIsLoading(false);
+      
+      // Show error message to user
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        content: 'Errore nell\'invio del messaggio. Per favore riprova.',
+        senderType: 'system',
+        createdAt: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
-  const generateFrancescaResponse = (userText: string): Message => {
+  const generateFrancescaResponse = (userText: string): ChatMessage => {
     const lowerText = userText.toLowerCase();
     
     let responseText = "";
@@ -157,20 +189,20 @@ export function ChatWidget() {
 
     return {
       id: `francesca-${Date.now()}`,
-      text: responseText,
-      sender: 'francesca',
-      timestamp: new Date().toISOString()
+      content: responseText,
+      senderType: 'francesca',
+      createdAt: new Date().toISOString()
     };
   };
 
   // Count user messages to trigger automatic escalation after N turns
   const getUserMessageCount = (): number => {
-    return messages.filter(msg => msg.sender === 'user').length;
+    return messages.filter(msg => msg.senderType === 'user').length;
   };
 
   const shouldTriggerEscalation = (userText: string): boolean => {
     // Prevent duplicate escalations - return false if already escalated
-    if (conversation?.status === 'escalated') {
+    if (conversation?.status === 'ESCALATED') {
       return false;
     }
     
@@ -193,7 +225,7 @@ export function ChatWidget() {
 
   const triggerEscalation = async () => {
     // Atomic synchronous guard to prevent race conditions
-    if (escalatingRef.current || conversation?.status === 'escalated') {
+    if (escalatingRef.current || conversation?.status === 'ESCALATED') {
       return;
     }
 
@@ -212,11 +244,11 @@ export function ChatWidget() {
         await apiRequest("POST", `/api/conversations/${conversation.id}/escalate`);
       }
 
-      const escalationMessage: Message = {
+      const escalationMessage: ChatMessage = {
         id: `escalation-${Date.now()}`,
-        text: "🚨 La tua conversazione è stata escalata al nostro team specializzato. Un manager ti contatterà entro 15 minuti al numero associato al tuo account.",
-        sender: 'system',
-        timestamp: new Date().toISOString(),
+        content: "🚨 La tua conversazione è stata escalata al nostro team specializzato. Un manager ti contatterà entro 15 minuti al numero associato al tuo account.",
+        senderType: 'system',
+        createdAt: new Date().toISOString(),
         isEscalated: true
       };
 
@@ -225,7 +257,7 @@ export function ChatWidget() {
       if (conversation) {
         setConversation(prev => prev ? {
           ...prev,
-          status: 'escalated',
+          status: 'ESCALATED',
           escalatedAt: new Date().toISOString()
         } : null);
       }
@@ -300,7 +332,7 @@ export function ChatWidget() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {conversation?.status === 'escalated' && (
+                  {conversation?.status === 'ESCALATED' && (
                     <AlertTriangle className="h-4 w-4 text-yellow-300" />
                   )}
                   <Button 
@@ -323,21 +355,21 @@ export function ChatWidget() {
                   <div
                     key={message.id}
                     className={`flex items-start gap-2 ${
-                      message.sender === 'user' ? 'flex-row-reverse' : ''
+                      message.senderType === 'user' ? 'flex-row-reverse' : ''
                     }`}
                     data-testid={`message-${message.id}`}
                   >
                     {/* Avatar */}
                     <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${
-                      message.sender === 'user' 
+                      message.senderType === 'user' 
                         ? 'bg-blue-500' 
-                        : message.sender === 'system'
+                        : message.senderType === 'system'
                         ? 'bg-orange-500'
                         : 'bg-gradient-to-r from-[#390035] to-[#901d6b]'
                     }`}>
-                      {message.sender === 'user' ? (
+                      {message.senderType === 'user' ? (
                         <User className="h-4 w-4" />
-                      ) : message.sender === 'system' ? (
+                      ) : message.senderType === 'system' ? (
                         <AlertTriangle className="h-4 w-4" />
                       ) : (
                         <Bot className="h-4 w-4" />
@@ -346,16 +378,16 @@ export function ChatWidget() {
 
                     {/* Message Bubble */}
                     <div className={`max-w-[70%] ${
-                      message.sender === 'user' ? 'items-end' : 'items-start'
+                      message.senderType === 'user' ? 'items-end' : 'items-start'
                     } flex flex-col`}>
                       <div className={`px-3 py-2 rounded-lg text-sm ${
-                        message.sender === 'user'
+                        message.senderType === 'user'
                           ? 'bg-blue-500 text-white'
-                          : message.sender === 'system'
+                          : message.senderType === 'system'
                           ? 'bg-orange-100 text-orange-800 border border-orange-200'
                           : 'bg-white text-gray-800 border'
                       } ${message.isEscalated ? 'border-orange-300 bg-orange-50' : ''}`}>
-                        {message.text}
+                        {message.content}
                         {message.isEscalated && (
                           <div className="flex items-center gap-1 mt-2 text-xs text-orange-600">
                             <Phone className="h-3 w-3" />
@@ -364,7 +396,7 @@ export function ChatWidget() {
                         )}
                       </div>
                       <span className="text-xs text-gray-500 mt-1">
-                        {formatTime(message.timestamp)}
+                        {formatTime(message.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -387,7 +419,7 @@ export function ChatWidget() {
                 )}
 
                 {/* Escalation Buttons - Show after 4+ user messages if not escalated */}
-                {getUserMessageCount() >= 4 && conversation?.status !== 'escalated' && (
+                {getUserMessageCount() >= 4 && conversation?.status !== 'ESCALATED' && (
                   <div className="sticky bottom-0 bg-white border-t border-gray-200 p-3 mx-4 mb-2 rounded-lg shadow-sm">
                     <p className="text-xs text-gray-600 mb-2 text-center">
                       Hai bisogno di ulteriore assistenza?
@@ -444,7 +476,7 @@ export function ChatWidget() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                {conversation?.status === 'escalated' && (
+                {conversation?.status === 'ESCALATED' && (
                   <p className="text-xs text-orange-600 mt-2 flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3" />
                     Conversazione escalata - Sarai contattato a breve

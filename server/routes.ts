@@ -1348,10 +1348,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const conversationId = req.params.id;
-      const { content, sender } = req.body;
+      const { content, senderType } = req.body;
 
-      if (!content || !sender) {
-        return res.status(400).json({ message: "Content and sender are required" });
+      if (!content || !senderType) {
+        return res.status(400).json({ message: "Content and senderType are required" });
       }
 
       // Verify conversation exists and user has access
@@ -1367,7 +1367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messageData = {
         conversationId,
         content,
-        sender,
+        senderType,
         createdAt: new Date()
       };
 

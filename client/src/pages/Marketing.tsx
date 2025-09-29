@@ -521,8 +521,8 @@ function CampagneSection() {
       name: editCampaignForm.name,
       objective: editCampaignForm.objective,
       budget: editCampaignForm.budget ? parseFloat(editCampaignForm.budget) : null,
-      startAt: editCampaignForm.startAt ? new Date(editCampaignForm.startAt).toISOString() : null,
-      endAt: editCampaignForm.endAt ? new Date(editCampaignForm.endAt).toISOString() : null,
+      startAt: editCampaignForm.startAt ? new Date(editCampaignForm.startAt) : null,
+      endAt: editCampaignForm.endAt ? new Date(editCampaignForm.endAt) : null,
       status: editCampaignForm.status
     };
 

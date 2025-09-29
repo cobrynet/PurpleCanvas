@@ -72,6 +72,15 @@ function QuickBuyModal({ service, open, onOpenChange }: {
         title: "Ordine creato con successo! 🎉",
         description: `Il tuo ordine #${mockOrder.id.slice(-8)} è stato inviato. Riceverai una conferma via email.`,
       });
+
+      // Additional notification for tickets ready (as per acceptance criteria)
+      setTimeout(() => {
+        toast({
+          title: "I tuoi biglietti sono pronti",
+          description: "Il servizio è stato processato e i materiali sono disponibili per il download.",
+          duration: 10000, // 10 seconds auto-dismiss
+        });
+      }, 2000); // Show after 2 seconds
       
       // Reset form
       setQuantity(1);

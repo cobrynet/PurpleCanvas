@@ -12,7 +12,8 @@ import {
   insertLeadSchema,
   insertOpportunitySchema,
   insertMarketingTaskSchema,
-  insertBusinessGoalSchema 
+  insertBusinessGoalSchema,
+  insertOfflineActivitySchema 
 } from "@shared/schema";
 import { assets } from "@shared/schema";
 import { createSocialPost, getSocialPosts } from "../app/api/social/posts/route";
@@ -611,6 +612,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  // Offline Activity routes
+  app.post('/api/organizations/:orgId/offline-activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = req.params.orgId;
+      
+      const membership = await storage.getUserMembership(userId, orgId);
+      if (!membership) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only ORG_ADMIN and MARKETER can create offline activities
+      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      
+      const activityData = insertOfflineActivitySchema.parse({
+        ...req.body,
+        organizationId: orgId,
+        createdByUserId: userId,
+      });
+      
+      const activity = await storage.createOfflineActivity(activityData);
+      
+      // Automatically create a linked marketing task
+      const taskTitle = `Gestione attività offline: ${activity.title}`;
+      const taskData = {
+        organizationId: orgId,
+        title: taskTitle,
+        type: 'marketing_offline',
+        subtype: activity.type.toLowerCase(),
+        assigneeId: userId,
+        status: 'BACKLOG' as const,
+        priority: 'P2' as const,
+        dueAt: activity.activityDate,
+      };
+      
+      const task = await storage.createMarketingTask(taskData);
+      
+      // Update the activity with the task ID
+      await storage.updateOfflineActivity(activity.id, orgId, { taskId: task.id });
+      
+      res.json({ activity: { ...activity, taskId: task.id }, task });
+    } catch (error) {
+      console.error("Error creating offline activity:", error);
+      res.status(500).json({ message: "Failed to create offline activity" });
+    }
+  });
+
+  app.get('/api/organizations/:orgId/offline-activities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const orgId = req.params.orgId;
+      
+      const membership = await storage.getUserMembership(userId, orgId);
+      if (!membership) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const activities = await storage.getOfflineActivities(orgId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching offline activities:", error);
+      res.status(500).json({ message: "Failed to fetch offline activities" });
     }
   });
 

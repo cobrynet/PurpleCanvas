@@ -1419,7 +1419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Unhandled event type ${event.type}`);
       }
 
-      res.json({ received: true });
+      res.status(200).json({ received: true });
     } catch (error) {
       console.error('Error processing Stripe webhook:', error);
       res.status(500).json({ error: 'Webhook handler failed' });

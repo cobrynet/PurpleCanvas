@@ -626,6 +626,10 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+export const insertAgentPresenceSchema = createInsertSchema(agentPresence).omit({
+  id: true,
+});
+
 // Authentication schemas
 export const authRegisterSchema = z.object({
   email: z.string().email("Formato email non valido"),
@@ -668,6 +672,7 @@ export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
 export type AgentPresence = typeof agentPresence.$inferSelect;
+export type InsertAgentPresence = z.infer<typeof insertAgentPresenceSchema>;
 export type AssetLink = typeof assetLinks.$inferSelect;
 export type InsertAssetLink = z.infer<typeof insertAssetLinkSchema>;
 export type BusinessGoal = typeof businessGoals.$inferSelect;

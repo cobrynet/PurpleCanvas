@@ -16,6 +16,9 @@ import {
   orgServiceOrders,
   socialConnections,
   notifications,
+  conversations,
+  conversationMessages,
+  agentPresence,
   type User,
   type UpsertUser,
   type Organization,
@@ -47,9 +50,15 @@ import {
   type InsertBudgetAllocation,
   type Notification,
   type InsertNotification,
+  type Conversation,
+  type InsertConversation,
+  type ConversationMessage,
+  type InsertConversationMessage,
+  type AgentPresence,
+  type InsertAgentPresence,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, count, ne, isNotNull } from "drizzle-orm";
+import { eq, and, desc, count, ne, isNotNull, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -158,6 +167,25 @@ export interface IStorage {
     dueDate: string;
     priority: string;
   }>>;
+
+  // Conversation operations
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  getConversations(userId?: string, status?: string): Promise<Conversation[]>;
+  getConversation(id: string): Promise<Conversation | undefined>;
+  updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined>;
+  assignConversation(id: string, assigneeId: string): Promise<Conversation | undefined>;
+  closeConversation(id: string): Promise<Conversation | undefined>;
+
+  // Conversation message operations
+  createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage>;
+  getConversationMessages(conversationId: string): Promise<ConversationMessage[]>;
+
+  // Agent presence operations
+  updateAgentPresence(agentId: string, presence: Partial<InsertAgentPresence>): Promise<AgentPresence>;
+  getAgentPresence(agentId: string): Promise<AgentPresence | undefined>;
+  getAvailableAgents(): Promise<AgentPresence[]>;
+  incrementAgentChatCount(agentId: string): Promise<void>;
+  decrementAgentChatCount(agentId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -789,6 +817,163 @@ export class DatabaseStorage implements IStorage {
       const diffDays = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       return `Scade tra ${diffDays} giorni`;
     }
+  }
+
+  // Conversation operations
+  async createConversation(conversation: InsertConversation): Promise<Conversation> {
+    const [created] = await db.insert(conversations).values(conversation).returning();
+    return created;
+  }
+
+  async getConversations(userId?: string, status?: string): Promise<Conversation[]> {
+    if (userId && status) {
+      return await db
+        .select()
+        .from(conversations)
+        .where(and(eq(conversations.userId, userId), eq(conversations.status, status as any)))
+        .orderBy(desc(conversations.updatedAt));
+    } else if (userId) {
+      return await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.userId, userId))
+        .orderBy(desc(conversations.updatedAt));
+    } else if (status) {
+      return await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.status, status as any))
+        .orderBy(desc(conversations.updatedAt));
+    }
+    
+    return await db
+      .select()
+      .from(conversations)
+      .orderBy(desc(conversations.updatedAt));
+  }
+
+  async getConversation(id: string): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, id));
+    return conversation;
+  }
+
+  async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation | undefined> {
+    const [updated] = await db
+      .update(conversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(conversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async assignConversation(id: string, assigneeId: string): Promise<Conversation | undefined> {
+    const [updated] = await db
+      .update(conversations)
+      .set({ 
+        assigneeId, 
+        status: 'PENDING',
+        updatedAt: new Date()
+      })
+      .where(eq(conversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async closeConversation(id: string): Promise<Conversation | undefined> {
+    const [updated] = await db
+      .update(conversations)
+      .set({ 
+        status: 'CLOSED',
+        closedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(conversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Conversation message operations
+  async createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage> {
+    const [created] = await db.insert(conversationMessages).values(message).returning();
+    
+    // Update conversation timestamp
+    await db
+      .update(conversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversations.id, message.conversationId));
+    
+    return created;
+  }
+
+  async getConversationMessages(conversationId: string): Promise<ConversationMessage[]> {
+    return await db
+      .select()
+      .from(conversationMessages)
+      .where(eq(conversationMessages.conversationId, conversationId))
+      .orderBy(conversationMessages.createdAt);
+  }
+
+  // Agent presence operations
+  async updateAgentPresence(agentId: string, presence: Partial<InsertAgentPresence>): Promise<AgentPresence> {
+    const existingPresence = await this.getAgentPresence(agentId);
+    
+    if (existingPresence) {
+      const [updated] = await db
+        .update(agentPresence)
+        .set({ ...presence, lastActiveAt: new Date() })
+        .where(eq(agentPresence.agentId, agentId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(agentPresence)
+        .values({ 
+          agentId, 
+          ...presence, 
+          lastActiveAt: new Date() 
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async getAgentPresence(agentId: string): Promise<AgentPresence | undefined> {
+    const [presence] = await db
+      .select()
+      .from(agentPresence)
+      .where(eq(agentPresence.agentId, agentId));
+    return presence;
+  }
+
+  async getAvailableAgents(): Promise<AgentPresence[]> {
+    return await db
+      .select()
+      .from(agentPresence)
+      .where(eq(agentPresence.status, 'ONLINE'))
+      .orderBy(agentPresence.currentChatCount);
+  }
+
+  async incrementAgentChatCount(agentId: string): Promise<void> {
+    await db
+      .update(agentPresence)
+      .set({ 
+        currentChatCount: sql`${agentPresence.currentChatCount} + 1`,
+        lastActiveAt: new Date()
+      })
+      .where(eq(agentPresence.agentId, agentId));
+  }
+
+  async decrementAgentChatCount(agentId: string): Promise<void> {
+    await db
+      .update(agentPresence)
+      .set({ 
+        currentChatCount: sql`GREATEST(0, ${agentPresence.currentChatCount} - 1)`,
+        lastActiveAt: new Date()
+      })
+      .where(eq(agentPresence.agentId, agentId));
   }
 }
 

@@ -22,6 +22,12 @@ import {
   organizationSettingsSchema
 } from "@shared/schema";
 import { assets } from "@shared/schema";
+
+// Helper function to get user ID from both OAuth and email/password sessions
+function getUserId(user: any): string {
+  return user.id || user.claims?.sub;
+}
+
 // Social media post functions would be imported here if they existed
 // For now, using placeholder functions
 // Social media publishing functions moved here to avoid import issues
@@ -185,7 +191,7 @@ async function publishSocialPost(req: any, res: any) {
   try {
     const { id } = req.params;
     const organizationId = req.currentOrganization;
-    const userId = req.user.claims.sub;
+    const userId = getUserId(req.user);
 
     // Find the post
     const postIndex = mockPosts.findIndex(post => post.id === id);
@@ -514,7 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -533,7 +539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Organization routes
   app.post('/api/organizations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const orgData = insertOrganizationSchema.parse(req.body);
       
       const organization = await storage.createOrganization(orgData);
@@ -571,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Goals routes
   app.post('/api/goals', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const goalData = insertBusinessGoalSchema.parse(req.body);
       
       // Verify user has access to the organization
@@ -704,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       
       if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
@@ -773,7 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Lead routes
   app.post('/api/leads', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
@@ -825,7 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Opportunity routes
   app.post('/api/opportunities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
@@ -908,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Marketing Offline Activity routes
   app.post('/api/marketing/offline', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
@@ -1165,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { filename, fileType, fileSize } = req.body;
       const orgId = req.currentOrganization;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       
       // Validate file size (max 50MB)
       const maxFileSize = 50 * 1024 * 1024; // 50MB
@@ -1202,7 +1208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/upload/complete', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
       const body = req.body;
       
@@ -1314,7 +1320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Conversation routes
   app.post('/api/conversations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const { subject, channel } = req.body;
       
       const conversationData = {
@@ -1342,7 +1348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/conversations/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const conversationId = req.params.id;
       
       // Get conversation from database
@@ -1372,7 +1378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/conversations/:id/messages', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const conversationId = req.params.id;
       const { content, senderType } = req.body;
 
@@ -1412,7 +1418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/conversations/:id/escalate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const conversationId = req.params.id;
       
       // Verify conversation exists and user has access
@@ -1445,7 +1451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const { status } = req.query;
       
       // Get conversations for this user from database
@@ -1461,7 +1467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Console API routes for operators (SUPER_ADMIN only)
   const requireSuperAdmin = async (req: any, res: any, next: any) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       const userMemberships = await storage.getUserOrganizations(userId);
       
       const isSuperAdmin = userMemberships.some(org => 
@@ -1605,7 +1611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Agent presence API routes
   app.put('/api/console/agents/presence', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
-      const agentId = req.user.claims.sub;
+      const agentId = getUserId(req.user);
       const { status } = req.body;
       
       if (!status || !['ONLINE', 'AWAY', 'OFFLINE'].includes(status)) {
@@ -1631,7 +1637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/console/agents/presence', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
     try {
-      const agentId = req.user.claims.sub;
+      const agentId = getUserId(req.user);
       
       // Get current agent presence
       const presence = await storage.getAgentPresence(agentId);
@@ -1657,7 +1663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { insertNotificationSchema } = await import('@shared/schema');
       const organizationId = req.currentOrganization;
-      const userId = req.user.claims.sub; // Derive userId from authenticated user, ignore client input
+      const userId = getUserId(req.user); // Derive userId from authenticated user, ignore client input
       
       const body = insertNotificationSchema.parse({
         ...req.body,
@@ -1682,7 +1688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/notifications', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       
       const notifications = await storage.getNotifications(userId, organizationId);
       const unreadCount = await storage.getUnreadNotificationsCount(userId, organizationId);
@@ -1703,7 +1709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const notificationId = req.params.id;
       const organizationId = req.currentOrganization;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       
       const notification = await storage.markNotificationAsRead(notificationId, userId, organizationId);
       
@@ -1732,7 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { serviceId, quantity = 1, total } = req.body;
       const organizationId = req.currentOrganization;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
 
       if (!serviceId || !total) {
         return res.status(400).json({ error: 'Missing required fields: serviceId, total' });
@@ -1834,7 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/social/oauth/meta/auth', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       
       // Generate state parameter for security
       const state = Buffer.from(JSON.stringify({ organizationId, userId })).toString('base64');
@@ -1915,7 +1921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/social/oauth/linkedin/auth', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req.user);
       
       // Generate state parameter for security
       const state = Buffer.from(JSON.stringify({ organizationId, userId })).toString('base64');

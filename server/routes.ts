@@ -146,8 +146,8 @@ async function publishToLinkedIn(connection: any, postContent: string, imageUrl?
 
 async function createTaskForUnconnectedPlatform(organizationId: string, userId: string, platform: string, postContent: string, imageUrl?: string) {
   try {
-    // Create a task for manual posting - using correct field names and enum values
-    const task = await storage.createMarketingTask({
+    // Create a task for manual posting with automation rules applied
+    const task = await storage.createMarketingTaskWithAutomation({
       organizationId,
       title: `Pubblica su ${platform}`,
       type: 'SOCIAL_PUBLISHING',
@@ -463,7 +463,7 @@ async function generateInitialTasks(goalData: any, userId: string): Promise<any[
   // Create tasks in database
   for (const taskData of baseTasks) {
     try {
-      const task = await storage.createMarketingTask({
+      const task = await storage.createMarketingTaskWithAutomation({
         organizationId: orgId,
         title: taskData.title,
         type: taskData.type,
@@ -729,11 +729,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subtype: 'adv_setup',
           assigneeId: userId,
           status: 'BACKLOG' as const,
-          priority: campaign.priority || 'P2',
+          priority: campaign.priority || 'P2', // Default priority, will be adjusted by automation rules
           dueAt: campaign.startAt ? new Date(new Date(campaign.startAt).getTime() - 7 * 24 * 60 * 60 * 1000) : null, // 7 days before start
         };
         
-        await storage.createMarketingTask(taskData);
+        await storage.createMarketingTaskWithAutomation(taskData);
       }
       
       res.json(campaign);
@@ -788,6 +788,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const lead = await storage.createLead(leadData);
+      
+      // Create automated follow-up task based on organization settings
+      const followUpTaskData = {
+        organizationId: orgId,
+        leadId: lead.id,
+        title: `Follow-up Lead: ${lead.firstName} ${lead.lastName}`,
+        type: 'lead_management',
+        subtype: 'lead_followup',
+        assigneeId: userId,
+        status: 'BACKLOG' as const,
+        priority: 'P2' as const, // Will be adjusted by automation rules
+      };
+      
+      await storage.createMarketingTaskWithAutomation(followUpTaskData);
+      
       res.json(lead);
     } catch (error) {
       console.error("Error creating lead:", error);
@@ -825,6 +840,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const opportunity = await storage.createOpportunity(opportunityData);
+      
+      // Create automated reminder task based on organization settings
+      const reminderTaskData = {
+        organizationId: orgId,
+        opportunityId: opportunity.id,
+        title: `Opportunity Review: ${opportunity.name}`,
+        type: 'opportunity_management',
+        subtype: 'opportunity_reminder',
+        assigneeId: userId,
+        status: 'BACKLOG' as const,
+        priority: 'P2' as const, // Will be adjusted by automation rules
+        dueAt: opportunity.closeDate ? new Date(opportunity.closeDate) : null,
+      };
+      
+      await storage.createMarketingTaskWithAutomation(reminderTaskData);
+      
       res.json(opportunity);
     } catch (error) {
       console.error("Error creating opportunity:", error);
@@ -854,7 +885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         organizationId: orgId,
       });
       
-      const task = await storage.createMarketingTask(taskData);
+      const task = await storage.createMarketingTaskWithAutomation(taskData);
       res.json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -897,14 +928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automatically create a linked marketing task
       const taskTitle = `Gestione attività offline: ${activity.title}`;
       
-      // Determine priority: P1 if within 30 days or budget > 0
-      const activityDate = new Date(activity.activityDate);
-      const now = new Date();
-      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const isWithin30Days = activityDate <= thirtyDaysFromNow;
-      const hasBudget = activity.budget && activity.budget > 0;
-      const priority = (isWithin30Days || hasBudget) ? 'P1' as const : 'P2' as const;
-      
+      // Create task with automation rules applied based on organization settings
       const taskData = {
         organizationId: orgId,
         title: taskTitle,
@@ -912,11 +936,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subtype: activity.type.toLowerCase(),
         assigneeId: userId,
         status: 'BACKLOG' as const,
-        priority,
+        priority: 'P2' as const, // Default priority, will be adjusted by automation rules
         dueAt: activity.activityDate,
       };
       
-      const task = await storage.createMarketingTask(taskData);
+      const task = await storage.createMarketingTaskWithAutomation(taskData);
       
       // Update the activity with the task ID
       await storage.updateOfflineActivity(activity.id, orgId, { taskId: task.id });

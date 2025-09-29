@@ -194,6 +194,10 @@ export interface IStorage {
   updateUserSettings(userId: string, settings: Partial<UserSettings>): Promise<UserSettings>;
   getOrganizationSettings(orgId: string): Promise<OrganizationSettings | null>;
   updateOrganizationSettings(orgId: string, settings: Partial<OrganizationSettings>): Promise<OrganizationSettings>;
+
+  // Task automation operations
+  createMarketingTaskWithAutomation(task: InsertMarketingTask): Promise<MarketingTask>;
+  applyTaskAutomationRules(task: InsertMarketingTask, orgSettings: OrganizationSettings | null): Promise<InsertMarketingTask>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1053,6 +1057,107 @@ export class DatabaseStorage implements IStorage {
         result[key] = this.deepMerge(target[key] || {}, source[key]);
       } else {
         result[key] = source[key];
+      }
+    }
+    
+    return result;
+  }
+
+  // Task automation operations
+  async createMarketingTaskWithAutomation(task: InsertMarketingTask): Promise<MarketingTask> {
+    // Check for existing similar tasks to avoid duplicates (idempotency)
+    const existingTasks = await this.db.query.marketingTasks.findMany({
+      where: and(
+        eq(marketingTasks.organizationId, task.organizationId),
+        eq(marketingTasks.type, task.type),
+        eq(marketingTasks.subtype, task.subtype || ''),
+        task.leadId ? eq(marketingTasks.leadId, task.leadId) : sql`lead_id IS NULL`,
+        task.opportunityId ? eq(marketingTasks.opportunityId, task.opportunityId) : sql`opportunity_id IS NULL`,
+        task.campaignId ? eq(marketingTasks.campaignId, task.campaignId) : sql`campaign_id IS NULL`,
+        ne(marketingTasks.status, 'DONE') // Only check for non-completed tasks
+      ),
+    });
+    
+    // If similar task already exists, return existing task instead of creating duplicate
+    if (existingTasks.length > 0) {
+      return existingTasks[0] as MarketingTask;
+    }
+    
+    // Get organization settings for automation rules
+    const orgSettings = await this.getOrganizationSettings(task.organizationId);
+    
+    // Apply automation rules to modify task properties
+    const automatedTask = await this.applyTaskAutomationRules(task, orgSettings);
+    
+    // Create the task with automated properties
+    return this.createMarketingTask(automatedTask);
+  }
+
+  async applyTaskAutomationRules(task: InsertMarketingTask, orgSettings: OrganizationSettings | null): Promise<InsertMarketingTask> {
+    const result = { ...task };
+    
+    if (!orgSettings?.workflows?.taskAutomation) {
+      return result;
+    }
+    
+    const automation = orgSettings.workflows.taskAutomation;
+    const now = new Date();
+    
+    // Rule 1: Event deadline escalation - events within configured days become higher priority
+    if (automation.eventDeadlineEscalation?.enabled && result.dueAt) {
+      const dueDate = new Date(result.dueAt);
+      const daysBefore = automation.eventDeadlineEscalation.daysBefore || 30;
+      const escalationDate = new Date(now.getTime() + daysBefore * 24 * 60 * 60 * 1000);
+      
+      if (dueDate <= escalationDate) {
+        result.priority = automation.eventDeadlineEscalation.targetPriority || 'P1';
+      }
+    }
+    
+    // Rule 2: Brand review reminder for print materials
+    if (automation.brandReviewReminder?.enabled && 
+        automation.brandReviewReminder.triggerOnPrintMaterials &&
+        (result.type === 'marketing_offline' && ['print', 'brochure', 'flyer', 'banner'].some(type => 
+          result.subtype?.toLowerCase().includes(type)))) {
+      
+      // Create additional reminder task for brand review
+      const daysBefore = automation.brandReviewReminder.daysBefore || 7;
+      const reviewDueDate = result.dueAt ? 
+        new Date(new Date(result.dueAt).getTime() - daysBefore * 24 * 60 * 60 * 1000) : 
+        new Date(now.getTime() + daysBefore * 24 * 60 * 60 * 1000);
+      
+      // Set high priority for brand review
+      if (result.dueAt && new Date(result.dueAt).getTime() - now.getTime() <= daysBefore * 24 * 60 * 60 * 1000) {
+        result.priority = 'P1';
+      }
+    }
+    
+    // Rule 3: Lead follow-up automation - if this is a lead-related task
+    if (automation.leadFollowUp?.enabled && 
+        (result.type === 'lead_management' || result.subtype?.includes('lead'))) {
+      
+      const firstFollowUpHours = automation.leadFollowUp.firstFollowUpHours || 24;
+      
+      // If no due date set, set it based on first follow-up rule  
+      if (!result.dueAt) {
+        result.dueAt = new Date(now.getTime() + firstFollowUpHours * 60 * 60 * 1000);
+        result.priority = 'P1'; // Lead follow-ups are high priority
+      }
+    }
+    
+    // Rule 4: Opportunity reminder escalation
+    if (automation.opportunityReminders?.enabled && 
+        (result.type === 'opportunity_management' || result.subtype?.includes('opportunity'))) {
+      
+      const escalateAfterDays = automation.opportunityReminders.escalateAfterDays || 7;
+      
+      if (result.dueAt) {
+        const dueDate = new Date(result.dueAt);
+        const escalationThreshold = new Date(now.getTime() + escalateAfterDays * 24 * 60 * 60 * 1000);
+        
+        if (dueDate <= escalationThreshold) {
+          result.priority = 'P1';
+        }
       }
     }
     

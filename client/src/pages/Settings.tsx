@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { 
   Settings, 
   User, 
@@ -11,7 +13,8 @@ import {
   Code,
   Save,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,10 +26,163 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import type { UserSettings, OrganizationSettings } from "@shared/schema";
+
+// Form schemas
+const accountFormSchema = z.object({
+  language: z.string().default('it'),
+  timezone: z.string().default('Europe/Rome'),
+  interface: z.object({
+    theme: z.enum(['light', 'dark', 'auto']).default('light'),
+  }).default({
+    theme: 'light'
+  }),
+});
+
+const organizationFormSchema = z.object({
+  organization: z.object({
+    name: z.string().optional(),
+    industry: z.string().optional(),
+    size: z.string().optional(),
+    country: z.string().optional(),
+    description: z.string().optional(),
+  }).default({}),
+  branding: z.object({
+    logoUrl: z.string().optional(),
+    brandColor: z.string().default('#390035'),
+    customDomain: z.string().optional(),
+    subdomain: z.string().optional(),
+    sslEnabled: z.boolean().default(true),
+  }).default({
+    brandColor: '#390035',
+    sslEnabled: true
+  }),
+});
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [showApiKey, setShowApiKey] = useState(false);
+
+  // Fetch user settings
+  const { data: userSettings, isLoading: userSettingsLoading, error: userSettingsError } = useQuery({
+    queryKey: ['/api/settings/user'],
+  });
+
+  // Fetch organization settings
+  const { data: orgSettings, isLoading: orgSettingsLoading, error: orgSettingsError } = useQuery({
+    queryKey: ['/api/settings/organization'],
+  });
+
+  // Update user settings mutation
+  const updateUserSettings = useMutation({
+    mutationFn: async (data: Partial<UserSettings>) => {
+      const response = await apiRequest('PATCH', '/api/settings/user', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/settings/user'] });
+      toast({
+        title: "Impostazioni Salvate",
+        description: "Le tue impostazioni personali sono state salvate con successo",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore nel salvare le impostazioni",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update organization settings mutation  
+  const updateOrgSettings = useMutation({
+    mutationFn: async (data: Partial<OrganizationSettings>) => {
+      const response = await apiRequest('PATCH', '/api/settings/organization', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/settings/organization'] });
+      toast({
+        title: "Impostazioni Salvate",
+        description: "Le impostazioni dell'organizzazione sono state salvate con successo",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore nel salvare le impostazioni dell'organizzazione",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Account form
+  const accountForm = useForm({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues: {
+      language: (userSettings as UserSettings)?.language || 'it',
+      timezone: (userSettings as UserSettings)?.timezone || 'Europe/Rome',
+      interface: {
+        theme: (userSettings as UserSettings)?.interface?.theme || 'light'
+      }
+    },
+  });
+
+  // Organization form  
+  const organizationForm = useForm({
+    resolver: zodResolver(organizationFormSchema),
+    defaultValues: {
+      organization: (orgSettings as OrganizationSettings)?.organization || {},
+      branding: (orgSettings as OrganizationSettings)?.branding || { brandColor: '#390035', sslEnabled: true }
+    },
+  });
+
+  const handleAccountSave = (data: z.infer<typeof accountFormSchema>) => {
+    // Merge with existing interface settings to preserve all properties
+    const updateData: Partial<UserSettings> = {
+      language: data.language,
+      timezone: data.timezone,
+      interface: {
+        ...(userSettings as UserSettings)?.interface,
+        theme: data.interface.theme,
+      }
+    };
+    updateUserSettings.mutate(updateData);
+  };
+
+  const handleOrganizationSave = (data: z.infer<typeof organizationFormSchema>) => {
+    updateOrgSettings.mutate(data);
+  };
+
+  // Hydrate account form with server data when it arrives
+  useEffect(() => {
+    if (userSettings) {
+      const settings = userSettings as UserSettings;
+      accountForm.reset({
+        language: settings.language || 'it',
+        timezone: settings.timezone || 'Europe/Rome',
+        interface: {
+          theme: settings.interface?.theme || 'light'
+        }
+      });
+    }
+  }, [userSettings, accountForm]);
+
+  // Hydrate organization form with server data when it arrives
+  useEffect(() => {
+    if (orgSettings) {
+      const settings = orgSettings as OrganizationSettings;
+      organizationForm.reset({
+        organization: settings.organization || {},
+        branding: settings.branding || { brandColor: '#390035', sslEnabled: true }
+      });
+    }
+  }, [orgSettings, organizationForm]);
 
   const handleSave = (section: string) => {
     toast({
@@ -93,91 +249,112 @@ export default function SettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">Nome</Label>
-                  <Input 
-                    id="firstName" 
-                    placeholder="Mario" 
-                    data-testid="input-first-name"
-                  />
+              {userSettingsLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="ml-2">Caricamento impostazioni...</span>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Cognome</Label>
-                  <Input 
-                    id="lastName" 
-                    placeholder="Rossi" 
-                    data-testid="input-last-name"
-                  />
+              )}
+              
+              {userSettingsError && (
+                <div className="text-red-500 text-sm">
+                  Errore nel caricamento delle impostazioni account
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="mario.rossi@example.com"
-                    data-testid="input-email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefono</Label>
-                  <Input 
-                    id="phone" 
-                    placeholder="+39 123 456 7890"
-                    data-testid="input-phone"
-                  />
-                </div>
-              </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea 
-                  id="bio" 
-                  placeholder="Raccontaci qualcosa di te..."
-                  data-testid="textarea-bio"
-                />
-              </div>
+              {!userSettingsLoading && !userSettingsError && (
+                <Form {...accountForm}>
+                  <form onSubmit={accountForm.handleSubmit(handleAccountSave)} className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Preferenze</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={accountForm.control}
+                          name="language"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Lingua</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-language">
+                                    <SelectValue placeholder="Seleziona lingua" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="it">Italiano</SelectItem>
+                                  <SelectItem value="en">English</SelectItem>
+                                  <SelectItem value="es">Español</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={accountForm.control}
+                          name="timezone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Fuso Orario</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-timezone">
+                                    <SelectValue placeholder="Seleziona fuso orario" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Europe/Rome">Europa/Roma</SelectItem>
+                                  <SelectItem value="Europe/London">Europa/Londra</SelectItem>
+                                  <SelectItem value="America/New_York">America/New York</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Preferenze</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="language">Lingua</Label>
-                    <Select data-testid="select-language">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona lingua" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="it">Italiano</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone">Fuso Orario</Label>
-                    <Select data-testid="select-timezone">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona fuso orario" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="europe/rome">Europa/Roma</SelectItem>
-                        <SelectItem value="europe/london">Europa/Londra</SelectItem>
-                        <SelectItem value="america/new_york">America/New York</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Interfaccia</h4>
+                      <FormField
+                        control={accountForm.control}
+                        name="interface.theme"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tema</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-theme">
+                                  <SelectValue placeholder="Seleziona tema" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="light">Chiaro</SelectItem>
+                                <SelectItem value="dark">Scuro</SelectItem>
+                                <SelectItem value="auto">Automatico</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-              <Button 
-                onClick={() => handleSave("Account")}
-                data-testid="save-account"
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Salva Account
-              </Button>
+                    <Button 
+                      type="submit"
+                      data-testid="save-account"
+                      className="flex items-center gap-2"
+                      disabled={updateUserSettings.isPending}
+                    >
+                      {updateUserSettings.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Salva Account
+                    </Button>
+                  </form>
+                </Form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -192,79 +369,188 @@ export default function SettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="orgName">Nome Organizzazione</Label>
-                  <Input 
-                    id="orgName" 
-                    placeholder="Stratikey S.r.l." 
-                    data-testid="input-org-name"
-                  />
+              {orgSettingsLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="ml-2">Caricamento impostazioni organizzazione...</span>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="industry">Settore</Label>
-                  <Select data-testid="select-industry">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona settore" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tech">Tecnologia</SelectItem>
-                      <SelectItem value="finance">Finanza</SelectItem>
-                      <SelectItem value="healthcare">Sanità</SelectItem>
-                      <SelectItem value="retail">Retail</SelectItem>
-                      <SelectItem value="manufacturing">Manifatturiero</SelectItem>
-                    </SelectContent>
-                  </Select>
+              )}
+              
+              {orgSettingsError && (
+                <div className="text-red-500 text-sm">
+                  Errore nel caricamento delle impostazioni organizzazione
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orgSize">Dimensione Azienda</Label>
-                  <Select data-testid="select-org-size">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona dimensione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1-10">1-10 dipendenti</SelectItem>
-                      <SelectItem value="11-50">11-50 dipendenti</SelectItem>
-                      <SelectItem value="51-200">51-200 dipendenti</SelectItem>
-                      <SelectItem value="201-1000">201-1000 dipendenti</SelectItem>
-                      <SelectItem value="1000+">1000+ dipendenti</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country">Paese</Label>
-                  <Select data-testid="select-country">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona paese" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="IT">Italia</SelectItem>
-                      <SelectItem value="US">Stati Uniti</SelectItem>
-                      <SelectItem value="GB">Regno Unito</SelectItem>
-                      <SelectItem value="DE">Germania</SelectItem>
-                      <SelectItem value="FR">Francia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="orgDescription">Descrizione</Label>
-                <Textarea 
-                  id="orgDescription" 
-                  placeholder="Descrivi la tua organizzazione..."
-                  data-testid="textarea-org-description"
-                />
-              </div>
+              {!orgSettingsLoading && !orgSettingsError && (
+                <Form {...organizationForm}>
+                  <form onSubmit={organizationForm.handleSubmit(handleOrganizationSave)} className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Informazioni Aziendali</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={organizationForm.control}
+                          name="organization.name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nome Organizzazione</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Stratikey S.r.l." 
+                                  data-testid="input-org-name"
+                                  {...field}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={organizationForm.control}
+                          name="organization.industry"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Settore</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-industry">
+                                    <SelectValue placeholder="Seleziona settore" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="tech">Tecnologia</SelectItem>
+                                  <SelectItem value="finance">Finanza</SelectItem>
+                                  <SelectItem value="healthcare">Sanità</SelectItem>
+                                  <SelectItem value="retail">Retail</SelectItem>
+                                  <SelectItem value="manufacturing">Manifatturiero</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={organizationForm.control}
+                          name="organization.size"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Dimensione Azienda</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-org-size">
+                                    <SelectValue placeholder="Seleziona dimensione" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="1-10">1-10 dipendenti</SelectItem>
+                                  <SelectItem value="11-50">11-50 dipendenti</SelectItem>
+                                  <SelectItem value="51-200">51-200 dipendenti</SelectItem>
+                                  <SelectItem value="201-1000">201-1000 dipendenti</SelectItem>
+                                  <SelectItem value="1000+">1000+ dipendenti</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={organizationForm.control}
+                          name="organization.country"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Paese</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-country">
+                                    <SelectValue placeholder="Seleziona paese" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="IT">Italia</SelectItem>
+                                  <SelectItem value="US">Stati Uniti</SelectItem>
+                                  <SelectItem value="GB">Regno Unito</SelectItem>
+                                  <SelectItem value="DE">Germania</SelectItem>
+                                  <SelectItem value="FR">Francia</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <FormField
+                        control={organizationForm.control}
+                        name="organization.description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descrizione</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Descrivi la tua organizzazione..."
+                                data-testid="textarea-org-description"
+                                {...field}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-              <Button 
-                onClick={() => handleSave("Organizzazione")}
-                data-testid="save-organization"
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Salva Organizzazione
-              </Button>
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Branding</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={organizationForm.control}
+                          name="branding.logoUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>URL Logo</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="https://example.com/logo.png"
+                                  data-testid="input-logo-url"
+                                  {...field}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={organizationForm.control}
+                          name="branding.brandColor"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Colore Primario</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="color"
+                                  data-testid="input-brand-color"
+                                  {...field}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      type="submit"
+                      data-testid="save-organization"
+                      className="flex items-center gap-2"
+                      disabled={updateOrgSettings.isPending}
+                    >
+                      {updateOrgSettings.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Salva Organizzazione
+                    </Button>
+                  </form>
+                </Form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

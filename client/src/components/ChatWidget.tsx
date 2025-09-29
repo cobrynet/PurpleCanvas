@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User, AlertTriangle, Phone } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, AlertTriangle, Phone, Mail, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,9 @@ export function ChatWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isEscalating, setIsEscalating] = useState(false);
+  const escalatingRef = useRef(false);
+  const escalationTimerRef = useRef<number | undefined>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -101,8 +104,13 @@ export function ChatWidget() {
         setIsLoading(false);
         
         // Check if escalation should happen
-        if (shouldTriggerEscalation(userMessage.text)) {
-          setTimeout(() => {
+        if (shouldTriggerEscalation(userMessage.text) && !escalatingRef.current) {
+          // Clear any existing escalation timer
+          if (escalationTimerRef.current) {
+            clearTimeout(escalationTimerRef.current);
+          }
+          // Schedule new escalation
+          escalationTimerRef.current = window.setTimeout(() => {
             triggerEscalation();
           }, 1000);
         }
@@ -155,18 +163,49 @@ export function ChatWidget() {
     };
   };
 
+  // Count user messages to trigger automatic escalation after N turns
+  const getUserMessageCount = (): number => {
+    return messages.filter(msg => msg.sender === 'user').length;
+  };
+
   const shouldTriggerEscalation = (userText: string): boolean => {
+    // Prevent duplicate escalations - return false if already escalated
+    if (conversation?.status === 'escalated') {
+      return false;
+    }
+    
     const escalationKeywords = [
       "urgente", "critico", "manager", "direttore", "escalation", 
       "inaccettabile", "reclamo", "disdetta", "rimborso", "legale"
     ];
     
-    return escalationKeywords.some(keyword => 
+    // Check for keywords
+    const hasKeywords = escalationKeywords.some(keyword => 
       userText.toLowerCase().includes(keyword)
     );
+    
+    // Check for automatic escalation after 6 user messages
+    const userMessageCount = getUserMessageCount();
+    const shouldAutoEscalate = userMessageCount >= 6;
+    
+    return hasKeywords || shouldAutoEscalate;
   };
 
   const triggerEscalation = async () => {
+    // Atomic synchronous guard to prevent race conditions
+    if (escalatingRef.current || conversation?.status === 'escalated') {
+      return;
+    }
+
+    escalatingRef.current = true;
+    setIsEscalating(true);
+    
+    // Clear any pending escalation timer
+    if (escalationTimerRef.current) {
+      clearTimeout(escalationTimerRef.current);
+      escalationTimerRef.current = undefined;
+    }
+
     try {
       // Update conversation status
       if (conversation) {
@@ -199,6 +238,9 @@ export function ChatWidget() {
 
     } catch (error) {
       console.error("Failed to escalate conversation:", error);
+    } finally {
+      escalatingRef.current = false;
+      setIsEscalating(false);
     }
   };
 
@@ -340,6 +382,39 @@ export function ChatWidget() {
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Escalation Buttons - Show after 4+ user messages if not escalated */}
+                {getUserMessageCount() >= 4 && conversation?.status !== 'escalated' && (
+                  <div className="sticky bottom-0 bg-white border-t border-gray-200 p-3 mx-4 mb-2 rounded-lg shadow-sm">
+                    <p className="text-xs text-gray-600 mb-2 text-center">
+                      Hai bisogno di ulteriore assistenza?
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => triggerEscalation()}
+                        disabled={isEscalating}
+                        className="flex items-center gap-1 text-xs"
+                        data-testid="escalate-to-operator"
+                      >
+                        <Headphones className="h-3 w-3" />
+                        Parla con operatore
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => triggerEscalation()}
+                        disabled={isEscalating}
+                        className="flex items-center gap-1 text-xs"
+                        data-testid="escalate-to-email"
+                      >
+                        <Mail className="h-3 w-3" />
+                        Richiedi email
+                      </Button>
                     </div>
                   </div>
                 )}

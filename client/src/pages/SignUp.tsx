@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Building2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function SignUp() {
   const [, setLocation] = useLocation();
@@ -72,6 +72,9 @@ export default function SignUp() {
         title: "Registrazione completata!",
         description: `Benvenuto ${formData.firstName}! La tua organizzazione è stata creata automaticamente.`,
       });
+
+      // Invalidate auth cache to refresh user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
       // Redirect to dashboard
       setLocation("/");

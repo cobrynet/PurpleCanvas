@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Building2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function SignIn() {
   const [, setLocation] = useLocation();
@@ -57,6 +57,9 @@ export default function SignIn() {
         title: "Login effettuato!",
         description: `Benvenuto, ${data.user.firstName}!`,
       });
+
+      // Invalidate auth cache to refresh user data
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
       // Redirect to dashboard
       setLocation("/");

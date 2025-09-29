@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ChatWidget } from "@/components/ChatWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/app/layout";
 import NotFound from "@/pages/not-found";
@@ -26,23 +27,27 @@ function Router() {
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
-        <AppLayout>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/marketing/overview" component={MarketingOverview} />
-            <Route path="/marketing/campaigns" component={Marketing} />
-            <Route path="/crm/leads" component={CRM} />
-            <Route path="/crm/opportunities" component={CRM} />
-            <Route path="/crm/pipeline" component={CRM} />
-            <Route path="/crm/cadences" component={CRM} />
-            <Route path="/tasks" component={Tasks} />
-            <Route path="/marketplace" component={Marketplace} />
-            <Route path="/notifications" component={Notifications} />
-            <Route path="/chat" component={Chat} />
-            <Route path="/settings" component={Settings} />
-            <Route component={NotFound} />
-          </Switch>
-        </AppLayout>
+        <>
+          <AppLayout>
+            <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route path="/marketing/overview" component={MarketingOverview} />
+              <Route path="/marketing/campaigns" component={Marketing} />
+              <Route path="/crm/leads" component={CRM} />
+              <Route path="/crm/opportunities" component={CRM} />
+              <Route path="/crm/pipeline" component={CRM} />
+              <Route path="/crm/cadences" component={CRM} />
+              <Route path="/tasks" component={Tasks} />
+              <Route path="/marketplace" component={Marketplace} />
+              <Route path="/notifications" component={Notifications} />
+              <Route path="/chat" component={Chat} />
+              <Route path="/settings" component={Settings} />
+              <Route component={NotFound} />
+            </Switch>
+          </AppLayout>
+          {/* Chat widget appears on all authenticated pages */}
+          <ChatWidget />
+        </>
       )}
       <Route component={NotFound} />
     </Switch>

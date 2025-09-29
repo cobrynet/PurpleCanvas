@@ -432,6 +432,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Conversation routes
+  app.post('/api/conversations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type } = req.body;
+      
+      const conversation = {
+        id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        status: 'active' as const,
+        type: type || 'chat_start',
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // In a real implementation, this would be saved to database
+      // For now, we'll return the mock conversation
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  app.get('/api/conversations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = req.params.id;
+      
+      // Mock conversation data
+      const conversation = {
+        id: conversationId,
+        userId,
+        status: 'active' as const,
+        messages: [
+          {
+            id: 'greeting',
+            text: 'Ciao, piacere sono Francesca. Come posso aiutarti?',
+            sender: 'francesca',
+            timestamp: new Date().toISOString()
+          }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      res.json(conversation);
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      res.status(500).json({ message: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post('/api/conversations/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = req.params.id;
+      const { text, sender } = req.body;
+
+      if (!text || !sender) {
+        return res.status(400).json({ message: "Text and sender are required" });
+      }
+
+      const message = {
+        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        conversationId,
+        text,
+        sender,
+        timestamp: new Date().toISOString(),
+        userId: sender === 'user' ? userId : null
+      };
+
+      // In a real implementation, this would be saved to database
+      res.json(message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.post('/api/conversations/:id/escalate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversationId = req.params.id;
+      
+      // Mock escalation process
+      const escalation = {
+        id: `escalation-${Date.now()}`,
+        conversationId,
+        userId,
+        escalatedAt: new Date().toISOString(),
+        reason: 'User requested escalation',
+        status: 'escalated' as const,
+        assignedTo: 'specialist-team',
+        estimatedResponseTime: '15 minutes'
+      };
+
+      // In a real implementation, this would:
+      // 1. Update conversation status to 'escalated'
+      // 2. Notify specialist team
+      // 3. Create escalation record in database
+      // 4. Send alerts/notifications
+
+      res.json({
+        success: true,
+        escalation,
+        message: 'Conversation has been escalated to specialist team'
+      });
+    } catch (error) {
+      console.error("Error escalating conversation:", error);
+      res.status(500).json({ message: "Failed to escalate conversation" });
+    }
+  });
+
+  app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Mock conversations list for user
+      const conversations = [
+        {
+          id: `conv-${Date.now()}-1`,
+          userId,
+          status: 'active' as const,
+          lastMessage: 'Ciao, piacere sono Francesca. Come posso aiutarti?',
+          lastMessageAt: new Date().toISOString(),
+          unreadCount: 0,
+          createdAt: new Date().toISOString()
+        }
+      ];
+
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

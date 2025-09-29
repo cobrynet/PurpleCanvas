@@ -29,10 +29,14 @@ Preferred communication style: Simple, everyday language.
 - **File Structure**: Monorepo with shared schema between client and server
 
 ### Authentication & Authorization
-- **Provider**: Replit OAuth integration with OpenID Connect
-- **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple
+- **Dual Authentication System**: Supports both email/password and Replit OAuth authentication methods
+- **Email/Password Auth**: Passport.js LocalStrategy with bcrypt password hashing (12 rounds)
+- **OAuth Integration**: Replit OAuth with OpenID Connect for seamless platform integration
+- **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple with secure cookie settings
+- **Security Features**: Zod server-side validation, user enumeration prevention, session regeneration
 - **Authorization Pattern**: Role-based access control with middleware protection
-- **User Management**: Multi-tenant user system with organization memberships
+- **User Management**: Multi-tenant user system with automatic organization creation and membership assignment
+- **Onboarding Flow**: Automatic organization creation with ORG_ADMIN role assignment for new users
 
 ### Data Storage Solutions
 - **Primary Database**: PostgreSQL with Neon serverless driver

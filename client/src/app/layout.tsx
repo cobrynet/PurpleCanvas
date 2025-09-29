@@ -11,7 +11,8 @@ import {
   User,
   Bell,
   MessageSquare,
-  HelpCircle
+  HelpCircle,
+  Share2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ interface AppLayoutProps {
 const sidebarItems = [
   { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/goals" },
   { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing" },
+  { id: "social", label: "Collega Social", icon: Share2, href: "/social-connections" },
   { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
   { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag, href: "/marketplace" },

@@ -21,6 +21,7 @@ import ConsoleOperatori from "@/pages/ConsoleOperatori";
 import Settings from "@/pages/Settings";
 import Goals from "@/pages/Goals";
 import OfflineActivities from "@/pages/OfflineActivities";
+import SocialConnections from "@/pages/SocialConnections";
 import SignIn from "@/pages/SignIn";
 import SignUp from "@/pages/SignUp";
 import OrganizationSelectorPage from "@/pages/OrganizationSelector";
@@ -63,6 +64,7 @@ function Router() {
                     <Route path="/crm/cadences" component={CRM} />
                     <Route path="/tasks" component={Tasks} />
                     <Route path="/marketplace" component={Marketplace} />
+                    <Route path="/social-connections" component={SocialConnections} />
                     <Route path="/notifications" component={Notifications} />
                     <Route path="/chat" component={Chat} />
                     <Route path="/console" component={ConsoleOperatori} />

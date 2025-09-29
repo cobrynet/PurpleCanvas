@@ -538,7 +538,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(socialConnections)
       .where(and(eq(socialConnections.id, id), eq(socialConnections.organizationId, orgId)));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Dashboard stats

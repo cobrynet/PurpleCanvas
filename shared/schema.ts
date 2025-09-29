@@ -284,6 +284,20 @@ export const pipelineStages = pgTable("pipeline_stages", {
   winProbability: integer("win_probability"),
 });
 
+// Business Goals tables
+export const goals = pgTable("goals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  sector: varchar("sector"),
+  annualObjectives: text("annual_objectives").notNull(),
+  targetClients: text("target_clients"),
+  marketingBudget: real("marketing_budget"),
+  preferredChannels: text("preferred_channels").array(),
+  additionalNotes: text("additional_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Marketplace tables
 export const services = pgTable("services", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -370,6 +384,14 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   assets: many(assets),
   audiences: many(audiences),
   orders: many(orgServiceOrders),
+  goals: many(goals),
+}));
+
+export const goalsRelations = relations(goals, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [goals.organizationId],
+    references: [organizations.id],
+  }),
 }));
 
 export const membershipsRelations = relations(memberships, ({ one }) => ({
@@ -471,6 +493,12 @@ export const insertAssetLinkSchema = createInsertSchema(assetLinks).omit({
   createdAt: true,
 });
 
+export const insertGoalSchema = createInsertSchema(goals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -498,3 +526,5 @@ export type InsertConversationMessage = z.infer<typeof insertConversationMessage
 export type AgentPresence = typeof agentPresence.$inferSelect;
 export type AssetLink = typeof assetLinks.$inferSelect;
 export type InsertAssetLink = z.infer<typeof insertAssetLinkSchema>;
+export type Goal = typeof goals.$inferSelect;
+export type InsertGoal = z.infer<typeof insertGoalSchema>;

@@ -12,7 +12,8 @@ import {
   Bell,
   MessageSquare,
   HelpCircle,
-  Share2
+  Share2,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -221,7 +222,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                     <span>Impostazioni</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem data-testid="account-logout">
+                  <DropdownMenuItem 
+                    data-testid="account-logout"
+                    onClick={() => window.location.href = '/api/logout'}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
                     <span>Logout</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

@@ -658,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -693,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -714,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const membership = req.currentMembership;
       const userId = getUserId(req.user);
       
-      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -757,7 +757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -785,7 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      if (!['ORG_ADMIN', 'SALES'].includes(membership.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'SALES'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -837,7 +837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      if (!['ORG_ADMIN', 'SALES'].includes(membership.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'SALES'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -853,7 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reminderTaskData = {
         organizationId: orgId,
         opportunityId: opportunity.id,
-        title: `Opportunity Review: ${opportunity.name}`,
+        title: `Opportunity Review: ${opportunity.title}`,
         type: 'opportunity_management',
         subtype: 'opportunity_reminder',
         assigneeId: userId,
@@ -920,8 +920,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      // Only ORG_ADMIN and MARKETER can create offline activities
-      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      // Only SUPER_ADMIN, ORG_ADMIN and MARKETER can create offline activities
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       
@@ -978,8 +978,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
       
-      // Only ORG_ADMIN and MARKETER can update offline activities
-      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      // Only SUPER_ADMIN, ORG_ADMIN and MARKETER can update offline activities
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       

@@ -128,7 +128,7 @@ async function generateInitialTasks(goalData: any, userId: string): Promise<any[
         type: taskData.type,
         subtype: taskData.subtype,
         assigneeId: userId,
-        status: "BACKLOG",
+        status: "BACKLOG" as const,
         priority: taskData.priority,
         dueAt: taskData.dueAt,
       });
@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'campaign_management',
           subtype: 'adv_setup',
           assigneeId: userId,
-          status: 'BACKLOG',
+          status: 'BACKLOG' as const,
           priority: campaign.priority || 'P2',
           dueAt: campaign.startAt ? new Date(new Date(campaign.startAt).getTime() - 7 * 24 * 60 * 60 * 1000) : null, // 7 days before start
         };

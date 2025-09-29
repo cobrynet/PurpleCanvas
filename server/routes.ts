@@ -871,8 +871,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Offline Activity routes
-  app.post('/api/offline-activities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  // Marketing Offline Activity routes
+  app.post('/api/marketing/offline', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const orgId = req.currentOrganization;
@@ -893,6 +893,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Automatically create a linked marketing task
       const taskTitle = `Gestione attività offline: ${activity.title}`;
+      
+      // Determine priority: P1 if within 30 days or budget > 0
+      const activityDate = new Date(activity.activityDate);
+      const now = new Date();
+      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const isWithin30Days = activityDate <= thirtyDaysFromNow;
+      const hasBudget = activity.budget && activity.budget > 0;
+      const priority = (isWithin30Days || hasBudget) ? 'P1' as const : 'P2' as const;
+      
       const taskData = {
         organizationId: orgId,
         title: taskTitle,
@@ -900,7 +909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subtype: activity.type.toLowerCase(),
         assigneeId: userId,
         status: 'BACKLOG' as const,
-        priority: 'P2' as const,
+        priority,
         dueAt: activity.activityDate,
       };
       
@@ -916,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/offline-activities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/marketing/offline', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -925,6 +934,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching offline activities:", error);
       res.status(500).json({ message: "Failed to fetch offline activities" });
+    }
+  });
+
+  app.patch('/api/marketing/offline/:id', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
+      
+      // Only ORG_ADMIN and MARKETER can update offline activities
+      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      
+      // Validate update data (exclude organizationId and createdByUserId from updates)
+      const { organizationId, createdByUserId, ...updateData } = req.body;
+      
+      const updatedActivity = await storage.updateOfflineActivity(id, orgId, updateData);
+      
+      if (!updatedActivity) {
+        return res.status(404).json({ message: "Activity not found" });
+      }
+      
+      res.json(updatedActivity);
+    } catch (error) {
+      console.error("Error updating offline activity:", error);
+      res.status(500).json({ message: "Failed to update offline activity" });
     }
   });
 

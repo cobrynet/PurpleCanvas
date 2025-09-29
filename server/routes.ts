@@ -14,7 +14,10 @@ import {
   insertOpportunitySchema,
   insertMarketingTaskSchema,
   insertBusinessGoalSchema,
-  insertOfflineActivitySchema 
+  insertOfflineActivitySchema,
+  insertConversationSchema,
+  insertConversationMessageSchema,
+  insertAgentPresenceSchema 
 } from "@shared/schema";
 import { assets } from "@shared/schema";
 // Social media post functions would be imported here if they existed
@@ -176,7 +179,7 @@ async function createTaskForUnconnectedPlatform(organizationId: string, userId: 
   }
 }
 
-async function publishSocialPost(req: any, res: Response) {
+async function publishSocialPost(req: any, res: any) {
   try {
     const { id } = req.params;
     const organizationId = req.currentOrganization;
@@ -317,7 +320,7 @@ async function publishSocialPost(req: any, res: Response) {
   }
 }
 
-async function getPublishStatus(req: Request, res: Response) {
+async function getPublishStatus(req: any, res: any) {
   try {
     const { id } = req.params;
 
@@ -481,9 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize Stripe (only if API key is available)
   let stripe: Stripe | null = null;
   if (process.env.STRIPE_SECRET_KEY) {
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
-    });
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
 
   // Health check endpoint
@@ -1288,20 +1289,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/conversations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { type } = req.body;
+      const { subject, channel } = req.body;
       
-      const conversation = {
-        id: `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      const conversationData = {
         userId,
-        status: 'active' as const,
-        type: type || 'chat_start',
-        messages: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        status: 'OPEN' as const,
+        channel: channel || 'WIDGET' as const,
+        subject: subject || null,
+        priority: 'P2' as const,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
-      // In a real implementation, this would be saved to database
-      // For now, we'll return the mock conversation
+      // Validate with schema
+      const validData = insertConversationSchema.parse(conversationData);
+      
+      // Save to database
+      const conversation = await storage.createConversation(validData);
+      
       res.json(conversation);
     } catch (error) {
       console.error("Error creating conversation:", error);
@@ -1314,24 +1319,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const conversationId = req.params.id;
       
-      // Mock conversation data
-      const conversation = {
-        id: conversationId,
-        userId,
-        status: 'active' as const,
-        messages: [
-          {
-            id: 'greeting',
-            text: 'Ciao, piacere sono Francesca. Come posso aiutarti?',
-            sender: 'francesca',
-            timestamp: new Date().toISOString()
-          }
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      res.json(conversation);
+      // Get conversation from database
+      const conversation = await storage.getConversation(conversationId);
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Check if user owns this conversation (security check)
+      if (conversation.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Get messages for this conversation
+      const messages = await storage.getConversationMessages(conversationId);
+      
+      res.json({
+        ...conversation,
+        messages
+      });
     } catch (error) {
       console.error("Error fetching conversation:", error);
       res.status(500).json({ message: "Failed to fetch conversation" });
@@ -1342,22 +1348,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const conversationId = req.params.id;
-      const { text, sender } = req.body;
+      const { content, sender } = req.body;
 
-      if (!text || !sender) {
-        return res.status(400).json({ message: "Text and sender are required" });
+      if (!content || !sender) {
+        return res.status(400).json({ message: "Content and sender are required" });
       }
 
-      const message = {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      // Verify conversation exists and user has access
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      if (conversation.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const messageData = {
         conversationId,
-        text,
+        content,
         sender,
-        timestamp: new Date().toISOString(),
-        userId: sender === 'user' ? userId : null
+        createdAt: new Date()
       };
 
-      // In a real implementation, this would be saved to database
+      // Validate with schema
+      const validData = insertConversationMessageSchema.parse(messageData);
+      
+      // Save to database
+      const message = await storage.createConversationMessage(validData);
+      
       res.json(message);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -1370,27 +1389,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const conversationId = req.params.id;
       
-      // Mock escalation process
-      const escalation = {
-        id: `escalation-${Date.now()}`,
-        conversationId,
-        userId,
-        escalatedAt: new Date().toISOString(),
-        reason: 'User requested escalation',
-        status: 'escalated' as const,
-        assignedTo: 'specialist-team',
-        estimatedResponseTime: '15 minutes'
-      };
+      // Verify conversation exists and user has access
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      if (conversation.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
 
-      // In a real implementation, this would:
-      // 1. Update conversation status to 'escalated'
-      // 2. Notify specialist team
-      // 3. Create escalation record in database
-      // 4. Send alerts/notifications
+      // Update conversation to PENDING status (waiting for agent pickup)
+      const updatedConversation = await storage.updateConversation(conversationId, {
+        status: 'PENDING',
+        escalatedAt: new Date(),
+        priority: 'P1' // Escalated conversations get high priority
+      });
 
       res.json({
         success: true,
-        escalation,
+        conversation: updatedConversation,
         message: 'Conversation has been escalated to specialist team'
       });
     } catch (error) {
@@ -1402,20 +1420,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const { status } = req.query;
       
-      // Mock conversations list for user
-      const conversations = [
-        {
-          id: `conv-${Date.now()}-1`,
-          userId,
-          status: 'active' as const,
-          lastMessage: 'Ciao, piacere sono Francesca. Come posso aiutarti?',
-          lastMessageAt: new Date().toISOString(),
-          unreadCount: 0,
-          createdAt: new Date().toISOString()
-        }
-      ];
-
+      // Get conversations for this user from database
+      const conversations = await storage.getConversations(userId, status as string);
+      
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -1447,58 +1456,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get conversations for console
   app.get('/api/console/conversations', isAuthenticated, requireSuperAdmin, async (req, res) => {
     try {
-      // Mock conversations data for now
-      const conversations = [
-        {
-          id: `conv-${Date.now()}-1`,
-          userId: 'user-123',
-          status: 'PENDING' as const,
-          channel: 'WIDGET' as const,
-          assigneeId: null,
-          escalatedAt: null,
-          closedAt: null,
-          subject: null,
-          priority: 'P2' as const,
-          createdAt: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-          updatedAt: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
-          customerName: 'Marco Rossi',
-          lastMessage: 'Ho bisogno di aiuto urgente con il mio ordine. È stato addebitato ma non ricevuto.',
-          messages: []
-        },
-        {
-          id: `conv-${Date.now()}-2`,
-          userId: 'user-456',
-          status: 'PENDING' as const,
-          channel: 'WIDGET' as const,
-          assigneeId: null,
-          escalatedAt: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
-          closedAt: null,
-          subject: null,
-          priority: 'P1' as const,
-          createdAt: new Date(Date.now() - 600000).toISOString(), // 10 minutes ago
-          updatedAt: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
-          customerName: 'Laura Bianchi',
-          lastMessage: 'Il sistema non funziona, non riesco ad accedere al mio account da stamattina.',
-          messages: []
-        },
-        {
-          id: `conv-${Date.now()}-3`,
-          userId: 'user-789',
-          status: 'OPEN' as const,
-          channel: 'WIDGET' as const,
-          assigneeId: 'agent-001',
-          escalatedAt: null,
-          closedAt: null,
-          subject: 'Supporto tecnico',
-          priority: 'P2' as const,
-          createdAt: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
-          updatedAt: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
-          customerName: 'Giuseppe Verdi',
-          lastMessage: 'Perfetto, grazie per il supporto. Ora funziona tutto.',
-          messages: []
-        }
-      ];
-
+      const { status } = req.query;
+      
+      // Get all conversations from database (not filtered by user for console view)
+      const conversations = await storage.getConversations(undefined, status as string);
+      
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching console conversations:", error);
@@ -1509,38 +1471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get available agents
   app.get('/api/console/agents', isAuthenticated, requireSuperAdmin, async (req, res) => {
     try {
-      // Mock agents data
-      const agents = [
-        {
-          id: 'agent-001',
-          name: 'Sofia Martini',
-          available: true,
-          currentChats: 2,
-          maxChats: 5
-        },
-        {
-          id: 'agent-002',
-          name: 'Andrea Romano',
-          available: true,
-          currentChats: 1,
-          maxChats: 4
-        },
-        {
-          id: 'agent-003',
-          name: 'Chiara Conti',
-          available: true,
-          currentChats: 0,
-          maxChats: 6
-        },
-        {
-          id: 'agent-004',
-          name: 'Luca Ferretti',
-          available: false,
-          currentChats: 5,
-          maxChats: 5
-        }
-      ];
-
+      // Get all available agents from database
+      const agents = await storage.getAvailableAgents();
+      
       res.json(agents);
     } catch (error) {
       console.error("Error fetching agents:", error);
@@ -1554,20 +1487,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversationId = req.params.id;
       const operatorId = (req.user as any)?.claims?.sub;
       
-      // In a real implementation, this would:
-      // 1. Update conversation status to 'OPEN'
-      // 2. Set assigneeId to the operator who accepted
-      // 3. Update updatedAt timestamp
-      // 4. Optionally notify the customer
+      // Assign conversation to the operator and update status
+      const updatedConversation = await storage.assignConversation(conversationId, operatorId);
       
-      console.log(`Conversation ${conversationId} accepted by operator ${operatorId}`);
+      if (!updatedConversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // Update agent presence (increment chat count)
+      await storage.incrementAgentChatCount(operatorId);
       
       res.json({
         success: true,
         message: 'Conversation accepted successfully',
-        conversationId,
-        assigneeId: operatorId,
-        acceptedAt: new Date().toISOString()
+        conversation: updatedConversation
       });
     } catch (error) {
       console.error("Error accepting conversation:", error);
@@ -1580,28 +1513,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const conversationId = req.params.id;
       const { agentId } = req.body;
-      const operatorId = (req.user as any)?.claims?.sub;
+      const currentOperatorId = (req.user as any)?.claims?.sub;
       
       if (!agentId) {
         return res.status(400).json({ message: "Agent ID is required for transfer" });
       }
       
-      // In a real implementation, this would:
-      // 1. Update conversation assigneeId to the new agent
-      // 2. Update updatedAt timestamp  
-      // 3. Log the transfer action
-      // 4. Notify both the previous and new agent
-      // 5. Optionally notify the customer about the transfer
+      // Get current conversation to check the current assignee
+      const currentConversation = await storage.getConversation(conversationId);
+      if (!currentConversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
       
-      console.log(`Conversation ${conversationId} transferred from ${operatorId} to agent ${agentId}`);
+      // Transfer conversation to the new agent
+      const updatedConversation = await storage.assignConversation(conversationId, agentId);
+      
+      // Update agent presence counts
+      if (currentConversation.assigneeId) {
+        await storage.decrementAgentChatCount(currentConversation.assigneeId);
+      }
+      await storage.incrementAgentChatCount(agentId);
       
       res.json({
         success: true,
         message: 'Conversation transferred successfully',
-        conversationId,
-        fromOperator: operatorId,
-        toAgent: agentId,
-        transferredAt: new Date().toISOString()
+        conversation: updatedConversation
       });
     } catch (error) {
       console.error("Error transferring conversation:", error);
@@ -1615,22 +1551,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversationId = req.params.id;
       const operatorId = (req.user as any)?.claims?.sub;
       
-      // In a real implementation, this would:
-      // 1. Update conversation status to 'CLOSED'
-      // 2. Set closedAt timestamp
-      // 3. Update updatedAt timestamp
-      // 4. Log the closure action
-      // 5. Optionally send closure notification to customer
-      // 6. Update agent availability/chat count
+      // Get current conversation to check the current assignee
+      const currentConversation = await storage.getConversation(conversationId);
+      if (!currentConversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
       
-      console.log(`Conversation ${conversationId} closed by operator ${operatorId}`);
+      // Close the conversation
+      const closedConversation = await storage.closeConversation(conversationId);
+      
+      // Update agent presence (decrement chat count if assigned)
+      if (currentConversation.assigneeId) {
+        await storage.decrementAgentChatCount(currentConversation.assigneeId);
+      }
       
       res.json({
         success: true,
         message: 'Conversation closed successfully',
-        conversationId,
-        closedBy: operatorId,
-        closedAt: new Date().toISOString()
+        conversation: closedConversation
       });
     } catch (error) {
       console.error("Error closing conversation:", error);

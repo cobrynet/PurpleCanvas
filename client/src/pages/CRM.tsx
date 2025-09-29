@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail } from "lucide-react";
+import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail, Play, Pause, Search, Filter, Calendar, Users, Clock, MessageSquare } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -48,7 +51,8 @@ export default function CRM() {
 
   // Determine current view based on URL
   const currentView = location.includes('/opportunities') ? 'opportunities' : 
-                     location.includes('/pipeline') ? 'pipeline' : 'leads';
+                     location.includes('/pipeline') ? 'pipeline' :
+                     location.includes('/cadences') ? 'cadences' : 'leads';
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -734,15 +738,360 @@ export default function CRM() {
     </div>
   );
 
+  // Mock data for cadences
+  const mockCadences = [
+    {
+      id: "cadence-1",
+      name: "Onboarding Nuovi Clienti B2B",
+      description: "Sequenza di benvenuto per nuovi clienti enterprise con follow-up personalizzati",
+      status: "active",
+      totalSteps: 7,
+      enrolledContacts: 143,
+      completedContacts: 89,
+      responseRate: 34.2,
+      openRate: 67.8,
+      createdAt: "2024-01-05T09:00:00Z",
+      lastModified: "2024-01-12T14:30:00Z",
+      steps: [
+        { type: "email", subject: "Benvenuto in Stratikey!", delay: 0 },
+        { type: "email", subject: "Come iniziare con la tua dashboard", delay: 2 },
+        { type: "phone", subject: "Chiamata di check-in", delay: 5 },
+        { type: "email", subject: "Tips per ottimizzare il tuo workflow", delay: 7 },
+        { type: "email", subject: "Invito webinar best practices", delay: 10 },
+        { type: "sms", subject: "Reminder webinar di domani", delay: 13 },
+        { type: "email", subject: "Follow-up post webinar", delay: 15 }
+      ]
+    },
+    {
+      id: "cadence-2", 
+      name: "Lead Nurturing E-commerce",
+      description: "Coltivazione lead interessati a soluzioni e-commerce con contenuti educativi",
+      status: "active",
+      totalSteps: 5,
+      enrolledContacts: 87,
+      completedContacts: 52,
+      responseRate: 28.7,
+      openRate: 72.1,
+      createdAt: "2024-01-08T11:20:00Z",
+      lastModified: "2024-01-14T16:45:00Z",
+      steps: [
+        { type: "email", subject: "Guida: 10 errori da evitare nel tuo e-commerce", delay: 0 },
+        { type: "email", subject: "Case study: Come abbiamo aumentato le vendite del 40%", delay: 3 },
+        { type: "phone", subject: "Consulenza gratuita 30 min", delay: 7 },
+        { type: "email", subject: "Checklist per un e-commerce di successo", delay: 10 },
+        { type: "email", subject: "Offerta speciale: Sconto 20% implementazione", delay: 14 }
+      ]
+    },
+    {
+      id: "cadence-3",
+      name: "Recupero Clienti Inattivi",
+      description: "Riattivazione clienti che non utilizzano la piattaforma da oltre 30 giorni",
+      status: "paused",
+      totalSteps: 4,
+      enrolledContacts: 34,
+      completedContacts: 19,
+      responseRate: 15.4,
+      openRate: 41.2,
+      createdAt: "2023-12-15T08:30:00Z",
+      lastModified: "2024-01-10T12:15:00Z",
+      steps: [
+        { type: "email", subject: "Ti manca qualcosa? Riprendiamo da dove avevamo lasciato", delay: 0 },
+        { type: "email", subject: "Nuove funzionalità che potrebbero interessarti", delay: 5 },
+        { type: "phone", subject: "Chiamata per feedback e supporto", delay: 8 },
+        { type: "email", subject: "Ultima opportunità: Offerta personalizzata", delay: 12 }
+      ]
+    }
+  ];
+
+  const statusColors = {
+    active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+    paused: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+    draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+  };
+
+  const statusLabels = {
+    active: "Attiva",
+    paused: "In Pausa", 
+    draft: "Bozza"
+  };
+
+  const stepTypeIcons = {
+    email: Mail,
+    phone: Phone,
+    sms: MessageSquare
+  };
+
+  const renderCadencesView = () => {
+    const activeCadences = mockCadences.filter(c => c.status === 'active').length;
+    const totalEnrolled = mockCadences.reduce((sum, c) => sum + c.enrolledContacts, 0);
+    const avgResponseRate = mockCadences.reduce((sum, c) => sum + c.responseRate, 0) / mockCadences.length;
+    const avgOpenRate = mockCadences.reduce((sum, c) => sum + c.openRate, 0) / mockCadences.length;
+
+    const formatDate = (dateString: string) => {
+      return new Date(dateString).toLocaleDateString('it-IT', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+      });
+    };
+
+    const getCompletionRate = (completed: number, enrolled: number) => {
+      return enrolled > 0 ? (completed / enrolled * 100) : 0;
+    };
+
+    return (
+      <div className="space-y-6" data-testid="cadences-view">
+        {/* Header Actions */}
+        <div className="flex justify-between items-center">
+          <Button data-testid="button-add-cadence">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuova Sequenza
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sequenze Attive</p>
+                  <p className="text-2xl font-bold" data-testid="stat-active-cadences">
+                    {activeCadences}
+                  </p>
+                </div>
+                <Play className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Contatti Iscritti</p>
+                  <p className="text-2xl font-bold" data-testid="stat-total-enrolled">
+                    {totalEnrolled}
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tasso Risposta Medio</p>
+                  <p className="text-2xl font-bold" data-testid="stat-avg-response-rate">
+                    {avgResponseRate.toFixed(1)}%
+                  </p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tasso Apertura Medio</p>
+                  <p className="text-2xl font-bold" data-testid="stat-avg-open-rate">
+                    {avgOpenRate.toFixed(1)}%
+                  </p>
+                </div>
+                <Mail className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Cerca sequenze per nome o descrizione..."
+                    className="pl-10"
+                    data-testid="input-search-cadences"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Select defaultValue="all">
+                  <SelectTrigger className="w-40" data-testid="select-status-filter">
+                    <SelectValue placeholder="Stato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutti gli stati</SelectItem>
+                    <SelectItem value="active">Attiva</SelectItem>
+                    <SelectItem value="paused">In Pausa</SelectItem>
+                    <SelectItem value="draft">Bozza</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cadences List */}
+        <div className="space-y-4">
+          {mockCadences.map((cadence) => (
+            <Card key={cadence.id} data-testid={`cadence-card-${cadence.id}`}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold">
+                        {cadence.name}
+                      </h3>
+                      <Badge className={statusColors[cadence.status as keyof typeof statusColors]}>
+                        {statusLabels[cadence.status as keyof typeof statusLabels]}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {cadence.description}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {cadence.status === 'active' ? (
+                      <Button variant="outline" size="sm" data-testid={`button-pause-${cadence.id}`}>
+                        <Pause className="h-4 w-4 mr-2" />
+                        Pausa
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" data-testid={`button-play-${cadence.id}`}>
+                        <Play className="h-4 w-4 mr-2" />
+                        Avvia
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" data-testid={`button-actions-${cadence.id}`}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Visualizza Analytics</DropdownMenuItem>
+                        <DropdownMenuItem>Modifica Sequenza</DropdownMenuItem>
+                        <DropdownMenuItem>Duplica</DropdownMenuItem>
+                        <DropdownMenuItem>Esporta Dati</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600">Elimina</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Statistics */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Statistiche</h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Contatti iscritti</span>
+                        <span className="font-medium">{cadence.enrolledContacts}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Completati</span>
+                        <span className="font-medium">{cadence.completedContacts}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Progresso</span>
+                          <span className="text-sm font-medium">
+                            {getCompletionRate(cadence.completedContacts, cadence.enrolledContacts).toFixed(1)}%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={getCompletionRate(cadence.completedContacts, cadence.enrolledContacts)}
+                          className="h-2"
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Tasso risposta</span>
+                        <span className="font-medium text-green-600">{cadence.responseRate}%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Tasso apertura</span>
+                        <span className="font-medium text-blue-600">{cadence.openRate}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Steps Preview */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <h4 className="font-medium">
+                      Anteprima Steps ({cadence.steps.length})
+                    </h4>
+                    
+                    <div className="space-y-3 max-h-48 overflow-y-auto">
+                      {cadence.steps.map((step, index) => {
+                        const Icon = stepTypeIcons[step.type as keyof typeof stepTypeIcons];
+                        return (
+                          <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center justify-center w-8 h-8 bg-background rounded-full border">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium">
+                                  Step {index + 1}
+                                </span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {step.type.toUpperCase()}
+                                </Badge>
+                                <div className="flex items-center text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {step.delay === 0 ? 'Immediato' : `+${step.delay} giorni`}
+                                </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {step.subject}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                  <span>Creata il {formatDate(cadence.createdAt)}</span>
+                  <span>Ultima modifica il {formatDate(cadence.lastModified)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <MainLayout 
-      title={currentView === 'opportunities' ? 'Opportunità' : currentView === 'pipeline' ? 'Pipeline' : 'Lead'} 
-      icon={currentView === 'opportunities' ? TrendingUp : UserPlus}
+      title={currentView === 'opportunities' ? 'Opportunità' : currentView === 'pipeline' ? 'Pipeline' : currentView === 'cadences' ? 'Sequenze di Vendita' : 'Lead'} 
+      icon={currentView === 'opportunities' ? TrendingUp : currentView === 'cadences' ? Mail : UserPlus}
     >
       <div data-testid="crm-content">
         {currentView === 'leads' && renderLeadsView()}
         {currentView === 'opportunities' && renderOpportunitiesView()}
         {currentView === 'pipeline' && renderPipelineView()}
+        {currentView === 'cadences' && renderCadencesView()}
       </div>
     </MainLayout>
   );

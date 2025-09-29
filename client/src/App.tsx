@@ -33,6 +33,7 @@ function Router() {
             <Route path="/crm/leads" component={CRM} />
             <Route path="/crm/opportunities" component={CRM} />
             <Route path="/crm/pipeline" component={CRM} />
+            <Route path="/crm/cadences" component={CRM} />
             <Route path="/tasks" component={Tasks} />
             <Route path="/marketplace" component={Marketplace} />
             <Route path="/chat" component={Chat} />

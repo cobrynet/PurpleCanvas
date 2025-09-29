@@ -164,27 +164,55 @@ export function ChatWidget() {
     
     let responseText = "";
     
-    if (lowerText.includes("problema") || lowerText.includes("errore") || lowerText.includes("bug")) {
-      responseText = "Mi dispiace per il problema che stai riscontrando. Potresti descrivermi più nel dettaglio cosa sta succedendo?";
-    } else if (lowerText.includes("aiuto") || lowerText.includes("supporto")) {
-      responseText = "Sono qui per aiutarti! Di che tipo di supporto hai bisogno? Posso assisterti con ordini, fatturazione, funzionalità o problemi tecnici.";
-    } else if (lowerText.includes("ordine") || lowerText.includes("marketplace")) {
-      responseText = "Riguardo al marketplace e agli ordini, posso aiutarti con lo stato degli ordini, modifiche, o problemi di pagamento. Cosa ti serve?";
-    } else if (lowerText.includes("urgente") || lowerText.includes("critico") || lowerText.includes("manager")) {
-      responseText = "Capisco che sia urgente. Sto escalando la tua richiesta a un nostro specialist che ti contatterà a breve.";
-    } else if (lowerText.includes("ciao") || lowerText.includes("salve")) {
-      responseText = "Ciao! Sono felice di poterti aiutare oggi. Su cosa posso assisterti?";
-    } else if (lowerText.includes("grazie")) {
-      responseText = "Prego! È stato un piacere aiutarti. Se hai altre domande, non esitare a scrivermi!";
+    // Problemi tecnici
+    if (lowerText.includes("problema") || lowerText.includes("errore") || lowerText.includes("bug") || lowerText.includes("non funziona")) {
+      responseText = "Mi dispiace per il problema che stai riscontrando. Potresti descrivermi più nel dettaglio cosa sta succedendo? Ad esempio, quando si verifica l'errore e che tipo di messaggio vedi?";
+    
+    // Marketing e campagne - SPECIFICO PRIMA
+    } else if (lowerText.includes("marketing") || lowerText.includes("campagna") || lowerText.includes("lead") || lowerText.includes("pubblicità")) {
+      responseText = "Ottimo! Vedo che hai domande sul marketing. Posso aiutarti con:\n\n• 📊 Gestione campagne e analytics\n• 👥 Generazione e qualifica lead\n• 📈 Ottimizzazione performance\n• 🎯 Strategie pubblicitarie\n\nCosa ti interessa di più?";
+    
+    // Vendite e CRM - SPECIFICO PRIMA
+    } else if (lowerText.includes("vendita") || lowerText.includes("cliente") || lowerText.includes("crm") || lowerText.includes("opportunità")) {
+      responseText = "Perfetto! Per quanto riguarda vendite e CRM, posso supportarti con:\n\n• 🤝 Gestione opportunità di vendita\n• 📋 Organizzazione pipeline clienti\n• 📞 Follow-up e attività\n• 📊 Report e analytics\n\nSu quale aspetto vuoi concentrarti?";
+    
+    // Ordini e marketplace - SPECIFICO PRIMA
+    } else if (lowerText.includes("ordine") || lowerText.includes("marketplace") || lowerText.includes("servizio") || lowerText.includes("acquisto")) {
+      responseText = "Riguardo al marketplace e agli ordini, posso aiutarti con:\n\n• 📋 Stato e tracking ordini\n• 🔄 Modifiche e cancellazioni\n• 💳 Problemi di pagamento\n• 🛍️ Catalogo servizi disponibili\n\nCosa ti serve?";
+    
+    // Account e fatturazione - SPECIFICO PRIMA
+    } else if (lowerText.includes("account") || lowerText.includes("fattura") || lowerText.includes("pagamento") || lowerText.includes("abbonamento")) {
+      responseText = "Per questioni di account e fatturazione, posso assisterti con:\n\n• 💳 Metodi di pagamento\n• 📄 Fatture e ricevute\n• ⚙️ Impostazioni account\n• 💰 Piani e abbonamenti\n\nDi quale servizio hai bisogno?";
+    
+    // Richieste di aiuto generale - GENERICO DOPO
+    } else if (lowerText.includes("aiuto") || lowerText.includes("supporto") || (lowerText.includes("come") && !lowerText.includes("marketing") && !lowerText.includes("vendita") && !lowerText.includes("ordine"))) {
+      responseText = "Sono qui per aiutarti! Posso assisterti con: \n\n• 📦 Ordini e marketplace\n• 💳 Fatturazione e pagamenti\n• ⚙️ Funzionalità della piattaforma\n• 🔧 Problemi tecnici\n\nDi cosa hai bisogno nello specifico?";
+    
+    // Urgenze e escalation
+    } else if (lowerText.includes("urgente") || lowerText.includes("critico") || lowerText.includes("manager") || lowerText.includes("reclamo")) {
+      responseText = "Capisco che sia urgente. Sto escalando immediatamente la tua richiesta al nostro team di specialist che ti contatteranno entro 15 minuti. Nel frattempo, puoi fornirmi più dettagli sul problema?";
+    
+    // Saluti
+    } else if (lowerText.includes("ciao") || lowerText.includes("salve") || lowerText.includes("buongiorno") || lowerText.includes("buonasera")) {
+      responseText = "Ciao! Sono Francesca, la tua assistente virtuale di Stratikey 👋\n\nSono qui per aiutarti con qualsiasi cosa tu abbia bisogno. Puoi chiedermi di:\n\n• Marketing e campagne\n• Vendite e CRM\n• Ordini e servizi\n• Supporto tecnico\n\nCome posso aiutarti oggi?";
+    
+    // Ringraziamenti
+    } else if (lowerText.includes("grazie") || lowerText.includes("perfetto") || lowerText.includes("ottimo")) {
+      responseText = "Sono felice di esserti stata utile! 😊 Se hai altre domande o hai bisogno di assistenza in futuro, non esitare a scrivermi. Buona giornata!";
+    
+    // Richieste di informazioni generiche
+    } else if (lowerText.includes("info") || lowerText.includes("sapere") || lowerText.includes("spiegare")) {
+      responseText = "Certamente! Sono qui per fornirti tutte le informazioni di cui hai bisogno. Stratikey offre:\n\n• 🚀 Piattaforma marketing completa\n• 📊 CRM e gestione vendite\n• 🛍️ Marketplace servizi integrato\n• 📈 Analytics e reporting avanzati\n\nSu cosa vorresti saperne di più?";
+    
+    // Risposte per messaggi non specifici - molto più utili
     } else {
-      const responses = [
-        "Interessante! Potresti dirmi di più su questo argomento?",
-        "Capisco. Lasciami vedere come posso aiutarti al meglio.",
-        "Perfetto! Dimmi pure come posso assisterti.",
-        "Ho preso nota. C'è qualcos'altro di specifico di cui vuoi parlare?",
-        "Ottimo! Sono qui per supportarti in tutto quello di cui hai bisogno."
+      const contextualResponses = [
+        "Interessante! Per aiutarti al meglio, potresti dirmi se la tua domanda riguarda:\n\n• 📊 Marketing e campagne\n• 💼 Vendite e CRM\n• 🛍️ Marketplace e ordini\n• ⚙️ Supporto tecnico",
+        "Capisco! Per indirizzarti correttamente, hai bisogno di supporto per:\n\n• 🎯 Gestione campagne marketing\n• 👥 Organizzazione clienti e lead\n• 📦 Servizi e ordini\n• 🔧 Problemi tecnici della piattaforma?",
+        "Perfetto! Dimmi pure di cosa hai bisogno. Posso assisterti in diverse aree:\n\n• 📈 Strategie marketing\n• 🤝 Gestione vendite\n• 🛒 Marketplace servizi\n• 💡 Funzionalità piattaforma",
+        "Sono qui per te! Per offrirti il miglior supporto, la tua richiesta è relativa a:\n\n• 🚀 Marketing automation\n• 📋 Pipeline vendite\n• 🛍️ Ordini e fatturazione\n• 🆘 Assistenza tecnica?"
       ];
-      responseText = responses[Math.floor(Math.random() * responses.length)];
+      responseText = contextualResponses[Math.floor(Math.random() * contextualResponses.length)];
     }
 
     return {
@@ -380,7 +408,7 @@ export function ChatWidget() {
                     <div className={`max-w-[70%] ${
                       message.senderType === 'user' ? 'items-end' : 'items-start'
                     } flex flex-col`}>
-                      <div className={`px-3 py-2 rounded-lg text-sm ${
+                      <div className={`px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
                         message.senderType === 'user'
                           ? 'bg-blue-500 text-white'
                           : message.senderType === 'system'

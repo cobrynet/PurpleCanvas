@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { MoreHorizontal, Filter } from "lucide-react";
+import { MoreHorizontal, Filter, Download } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { generateMockTasksCSV } from "@/utils/csvExport";
 
 interface Task {
   id: string;
@@ -77,6 +78,17 @@ export function TaskList({ tasks, isLoading }: TaskListProps) {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Attività Recenti</h3>
           <div className="flex items-center space-x-2">
+            {/* Export CSV Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center space-x-2" 
+              onClick={generateMockTasksCSV}
+              data-testid="export-csv-button"
+            >
+              <Download className="w-4 h-4" />
+              <span>Esporta CSV</span>
+            </Button>
             {/* View Toggle */}
             <div className="flex bg-muted rounded-lg p-1" data-testid="view-toggle">
               {viewButtons.map((view) => (

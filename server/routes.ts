@@ -141,29 +141,25 @@ async function publishToLinkedIn(connection: any, postContent: string, imageUrl?
 
 async function createTaskForUnconnectedPlatform(organizationId: string, userId: string, platform: string, postContent: string, imageUrl?: string) {
   try {
-    // Create a task for manual posting
+    // Create a task for manual posting - using correct field names and enum values
     const task = await storage.createMarketingTask({
       organizationId,
       title: `Pubblica su ${platform}`,
-      description: `Pubblica manualmente questo contenuto su ${platform}:\n\n${postContent}${imageUrl ? `\n\nImmagine: ${imageUrl}` : ''}`,
       type: 'SOCIAL_PUBLISHING',
-      priority: 'MEDIUM',
-      status: 'NOT_STARTED',
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Due tomorrow
-      assignedTo: userId,
+      assigneeId: userId,
+      status: 'BACKLOG' as const,
+      priority: 'P2' as const,
+      dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Due tomorrow
     });
 
-    // Create a reminder notification
+    // Create a reminder notification - using correct schema fields
     await storage.createNotification({
       organizationId,
-      recipientUserId: userId,
+      userId: userId,
       title: `Promemoria: Pubblica su ${platform}`,
-      message: `Non dimenticare di pubblicare il contenuto su ${platform}. Controlla le tue attività per i dettagli.`,
-      type: 'TASK_REMINDER',
-      priority: 'MEDIUM',
+      message: `Non dimenticare di pubblicare il contenuto su ${platform}:\n\n${postContent}${imageUrl ? `\n\nImmagine: ${imageUrl}` : ''}`,
+      type: 'INFO' as const,
       isRead: false,
-      relatedEntityId: task.id,
-      relatedEntityType: 'task',
     });
 
     return {

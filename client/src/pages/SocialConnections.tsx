@@ -64,6 +64,20 @@ export default function SocialConnections() {
     queryKey: ['/api/social/connections'],
   });
 
+  if (isLoading) {
+    return (
+      <MainLayout
+        title="Collega i tuoi Social"
+        description="Connetti i tuoi account social per pubblicare automaticamente i contenuti"
+        icon={Facebook}
+      >
+        <div className="flex items-center justify-center py-12" data-testid="loading-social-connections">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
+    );
+  }
+
   // Connect to social provider
   const connectMutation = useMutation({
     mutationFn: async (provider: string) => {
@@ -134,19 +148,19 @@ export default function SocialConnections() {
     >
       <div className="space-y-6">
         {/* Header Info */}
-        <Card>
+        <Card data-testid="social-connections-header">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" data-testid="social-connections-title">
               <Facebook className="w-5 h-5" />
               Connessioni Social Media
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-muted-foreground mb-4" data-testid="social-connections-description">
               Collega i tuoi account social per pubblicare automaticamente i contenuti direttamente dalle campagne marketing.
               Se un social non è collegato, verranno create task e promemoria per la pubblicazione manuale.
             </p>
-            <Alert>
+            <Alert data-testid="security-info">
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
                 <strong>Privacy & Sicurezza:</strong> Non memorizziamo le tue password. 
@@ -164,24 +178,24 @@ export default function SocialConnections() {
             const Icon = provider.icon;
 
             return (
-              <Card key={provider.id} className="border-2">
+              <Card key={provider.id} className="border-2" data-testid={`provider-card-${provider.id}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${provider.color}`}>
+                      <div className={`p-2 rounded-lg ${provider.color}`} data-testid={`provider-icon-${provider.id}`}>
                         <Icon className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2" data-testid={`provider-name-${provider.id}`}>
                           {provider.name}
                           {isConnected && (
-                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                            <Badge className="bg-green-100 text-green-800 border-green-200" data-testid={`connected-badge-${provider.id}`}>
                               <CheckCircle2 className="w-3 h-3 mr-1" />
                               Collegato
                             </Badge>
                           )}
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-sm text-muted-foreground mt-1" data-testid={`provider-description-${provider.id}`}>
                           {provider.description}
                         </p>
                       </div>
@@ -214,11 +228,11 @@ export default function SocialConnections() {
 
                 <CardContent>
                   {/* Scopes */}
-                  <div className="mb-4">
+                  <div className="mb-4" data-testid={`provider-scopes-${provider.id}`}>
                     <p className="text-sm font-medium mb-2">Permessi richiesti:</p>
                     <div className="flex flex-wrap gap-1">
                       {provider.scopes.map((scope) => (
-                        <Badge key={scope} variant="outline" className="text-xs">
+                        <Badge key={scope} variant="outline" className="text-xs" data-testid={`scope-${provider.id}-${scope.toLowerCase().replace(/\s+/g, '-')}`}>
                           {scope}
                         </Badge>
                       ))}
@@ -227,10 +241,10 @@ export default function SocialConnections() {
 
                   {/* Connected Accounts */}
                   {isConnected && (
-                    <div>
+                    <div data-testid={`connected-accounts-${provider.id}`}>
                       <Separator className="my-4" />
                       <div>
-                        <p className="text-sm font-medium mb-3">Account collegati:</p>
+                        <p className="text-sm font-medium mb-3" data-testid={`connected-accounts-label-${provider.id}`}>Account collegati:</p>
                         <div className="space-y-2">
                           {providerConnections.map((connection) => {
                             const ConnectionIcon = getProviderIcon(connection.provider);
@@ -238,12 +252,13 @@ export default function SocialConnections() {
                               <div
                                 key={connection.id}
                                 className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                                data-testid={`connected-account-${connection.id}`}
                               >
                                 <div className="flex items-center gap-3">
                                   <ConnectionIcon className={`w-4 h-4 ${provider.textColor}`} />
                                   <div>
-                                    <p className="font-medium">{connection.displayName}</p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="font-medium" data-testid={`account-name-${connection.id}`}>{connection.displayName}</p>
+                                    <p className="text-xs text-muted-foreground" data-testid={`account-status-${connection.id}`}>
                                       {connection.accountType} • Stato: {connection.status}
                                     </p>
                                   </div>
@@ -272,31 +287,31 @@ export default function SocialConnections() {
         </div>
 
         {/* Instructions */}
-        <Card>
+        <Card data-testid="instructions-card">
           <CardHeader>
-            <CardTitle>Come funziona</CardTitle>
+            <CardTitle data-testid="instructions-title">Come funziona</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
+            <div className="grid md:grid-cols-2 gap-4" data-testid="instructions-grid">
+              <div data-testid="instruction-step-1">
                 <h4 className="font-medium mb-2">1. Collega i tuoi account</h4>
                 <p className="text-sm text-muted-foreground">
                   Clicca su "Connetti" per autorizzare Stratikey ad accedere ai tuoi account social tramite OAuth sicuro.
                 </p>
               </div>
-              <div>
+              <div data-testid="instruction-step-2">
                 <h4 className="font-medium mb-2">2. Pubblicazione automatica</h4>
                 <p className="text-sm text-muted-foreground">
                   I contenuti delle campagne verranno pubblicati automaticamente sui social collegati.
                 </p>
               </div>
-              <div>
+              <div data-testid="instruction-step-3">
                 <h4 className="font-medium mb-2">3. Fallback intelligente</h4>
                 <p className="text-sm text-muted-foreground">
                   Se un social non è collegato, riceverai task e promemoria per la pubblicazione manuale.
                 </p>
               </div>
-              <div>
+              <div data-testid="instruction-step-4">
                 <h4 className="font-medium mb-2">4. Controllo completo</h4>
                 <p className="text-sm text-muted-foreground">
                   Puoi revocare l'accesso in qualsiasi momento e gestire le connessioni da questa pagina.

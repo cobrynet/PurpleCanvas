@@ -116,6 +116,7 @@ export interface IStorage {
   // Order operations
   createOrder(order: Omit<OrgServiceOrder, 'id' | 'createdAt'>): Promise<OrgServiceOrder>;
   getOrders(orgId: string): Promise<OrgServiceOrder[]>;
+  updateOrderPaymentStatus(orderId: string, stripePaymentIntentId: string, status: 'CONFIRMED' | 'REQUESTED' | 'IN_PROGRESS' | 'DELIVERED' | 'CLOSED'): Promise<OrgServiceOrder | undefined>;
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -478,6 +479,18 @@ export class DatabaseStorage implements IStorage {
       .from(orgServiceOrders)
       .where(eq(orgServiceOrders.organizationId, orgId))
       .orderBy(desc(orgServiceOrders.createdAt));
+  }
+
+  async updateOrderPaymentStatus(orderId: string, stripePaymentIntentId: string, status: 'CONFIRMED' | 'REQUESTED' | 'IN_PROGRESS' | 'DELIVERED' | 'CLOSED'): Promise<OrgServiceOrder | undefined> {
+    const [updated] = await db
+      .update(orgServiceOrders)
+      .set({ 
+        status, 
+        stripePaymentIntentId 
+      })
+      .where(eq(orgServiceOrders.id, orderId))
+      .returning();
+    return updated;
   }
 
   // Dashboard stats

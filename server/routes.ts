@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, withCurrentOrganization } from "./replitAuth";
 import { db } from "./db";
@@ -143,6 +144,14 @@ async function generateInitialTasks(goalData: any, userId: string): Promise<any[
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize Stripe (only if API key is available)
+  let stripe: Stripe | null = null;
+  if (process.env.STRIPE_SECRET_KEY) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    });
+  }
+
   // Health check endpoint
   app.get('/api/health', async (req, res) => {
     try {
@@ -1308,6 +1317,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking notification as read:', error);
       res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+  });
+
+  // Stripe Marketplace Checkout API
+  app.post('/api/marketplace/checkout', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: 'Stripe not configured' });
+      }
+
+      const { serviceId, quantity = 1, total } = req.body;
+      const organizationId = req.currentOrganization;
+      const userId = req.user.claims.sub;
+
+      if (!serviceId || !total) {
+        return res.status(400).json({ error: 'Missing required fields: serviceId, total' });
+      }
+
+      // Create order in database first
+      const order = await storage.createOrder({
+        organizationId,
+        serviceId,
+        quantity,
+        total,
+        status: 'REQUESTED',
+        assigneeVendorUserId: null,
+        stripePaymentIntentId: null,
+        options: req.body.options || null,
+      });
+
+      // Create Stripe Checkout Session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'eur',
+              product_data: {
+                name: `Service Order #${order.id}`,
+                description: 'Marketplace Service',
+              },
+              unit_amount: Math.round(total * 100), // Convert to cents
+            },
+            quantity,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${req.headers.origin || 'http://localhost:5000'}/marketplace?success=true`,
+        cancel_url: `${req.headers.origin || 'http://localhost:5000'}/marketplace?canceled=true`,
+        metadata: {
+          orderId: order.id,
+          organizationId,
+          userId,
+        },
+      });
+
+      res.json({
+        checkoutUrl: session.url,
+        sessionId: session.id,
+        orderId: order.id,
+      });
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+  });
+
+  // Stripe Webhook Handler
+  app.post('/api/webhooks/stripe', async (req, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: 'Stripe not configured' });
+      }
+
+      const event = req.body;
+
+      // Handle the event
+      switch (event.type) {
+        case 'checkout.session.completed':
+          const session = event.data.object;
+          const { orderId } = session.metadata;
+
+          if (orderId) {
+            // Update order status to CONFIRMED when payment is successful
+            await storage.updateOrderPaymentStatus(
+              orderId,
+              session.payment_intent,
+              'CONFIRMED'
+            );
+            console.log(`Order ${orderId} marked as CONFIRMED after successful payment`);
+          }
+          break;
+
+        case 'payment_intent.payment_failed':
+          const paymentIntent = event.data.object;
+          console.log(`Payment failed for intent: ${paymentIntent.id}`);
+          break;
+
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error('Error processing Stripe webhook:', error);
+      res.status(500).json({ error: 'Webhook handler failed' });
     }
   });
 

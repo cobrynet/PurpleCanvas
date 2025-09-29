@@ -168,9 +168,14 @@ export function ChatWidget() {
     if (lowerText.includes("problema") || lowerText.includes("errore") || lowerText.includes("bug") || lowerText.includes("non funziona")) {
       responseText = "Mi dispiace per il problema che stai riscontrando. Potresti descrivermi più nel dettaglio cosa sta succedendo? Ad esempio, quando si verifica l'errore e che tipo di messaggio vedi?";
     
-    // Marketing e campagne - SPECIFICO PRIMA
-    } else if (lowerText.includes("marketing") || lowerText.includes("campagna") || lowerText.includes("lead") || lowerText.includes("pubblicità")) {
-      responseText = "Ottimo! Vedo che hai domande sul marketing. Posso aiutarti con:\n\n• 📊 Gestione campagne e analytics\n• 👥 Generazione e qualifica lead\n• 📈 Ottimizzazione performance\n• 🎯 Strategie pubblicitarie\n\nCosa ti interessa di più?";
+    // Marketing e campagne - SPECIFICO PRIMA (inclusi social media e contenuti)
+    } else if (lowerText.includes("marketing") || lowerText.includes("campagna") || lowerText.includes("lead") || lowerText.includes("pubblicità") ||
+               lowerText.includes("post") || lowerText.includes("instagram") || lowerText.includes("facebook") || lowerText.includes("social") ||
+               lowerText.includes("contenuti") || lowerText.includes("contenuto") || lowerText.includes("stories") || lowerText.includes("reel") ||
+               lowerText.includes("tweet") || lowerText.includes("linkedin") || lowerText.includes("tiktok") || lowerText.includes("youtube") ||
+               lowerText.includes("video") || lowerText.includes("foto") || lowerText.includes("immagine") || lowerText.includes("pubblicare") ||
+               lowerText.includes("condividere") || lowerText.includes("story") || lowerText.includes("hashtag")) {
+      responseText = "Perfetto! Vedo che vuoi creare contenuti o gestire la presenza sui social. Posso aiutarti con:\n\n• 📱 Strategia social media (Instagram, Facebook, LinkedIn, TikTok)\n• ✍️ Creazione contenuti e post\n• 📊 Analytics e performance tracking\n• 🎯 Targeting e advertising\n• 📈 Crescita organica e engagement\n• #️⃣ Hashtag e strategie virali\n\nSu quale piattaforma o tipo di contenuto vuoi concentrarti?";
     
     // Vendite e CRM - SPECIFICO PRIMA
     } else if (lowerText.includes("vendita") || lowerText.includes("cliente") || lowerText.includes("crm") || lowerText.includes("opportunità")) {

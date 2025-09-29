@@ -2,7 +2,9 @@ import {
   users,
   organizations,
   memberships,
-  goals,
+  businessGoals,
+  goalAttachments,
+  budgetAllocations,
   campaigns,
   leads,
   opportunities,
@@ -30,8 +32,12 @@ import {
   type InsertAssetLink,
   type Service,
   type OrgServiceOrder,
-  type Goal,
-  type InsertGoal,
+  type BusinessGoal,
+  type InsertBusinessGoal,
+  type GoalAttachment,
+  type InsertGoalAttachment,
+  type BudgetAllocation,
+  type InsertBudgetAllocation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull } from "drizzle-orm";
@@ -52,8 +58,10 @@ export interface IStorage {
   getOrganizationMembers(orgId: string): Promise<(Membership & { user: User })[]>;
 
   // Goal operations
-  createGoal(goal: InsertGoal): Promise<Goal>;
-  getGoals(orgId: string): Promise<Goal[]>;
+  createBusinessGoal(goal: InsertBusinessGoal): Promise<BusinessGoal>;
+  getBusinessGoals(orgId: string): Promise<BusinessGoal[]>;
+  createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment>;
+  createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation>;
 
   // Campaign operations
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
@@ -195,17 +203,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Goal operations
-  async createGoal(goal: InsertGoal): Promise<Goal> {
-    const [created] = await db.insert(goals).values(goal).returning();
+  async createBusinessGoal(goal: InsertBusinessGoal): Promise<BusinessGoal> {
+    const [created] = await db.insert(businessGoals).values(goal).returning();
     return created;
   }
 
-  async getGoals(orgId: string): Promise<Goal[]> {
+  async getBusinessGoals(orgId: string): Promise<BusinessGoal[]> {
     return await db
       .select()
-      .from(goals)
-      .where(eq(goals.organizationId, orgId))
-      .orderBy(desc(goals.createdAt));
+      .from(businessGoals)
+      .where(eq(businessGoals.organizationId, orgId))
+      .orderBy(desc(businessGoals.createdAt));
+  }
+
+  async createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment> {
+    const [created] = await db.insert(goalAttachments).values(attachment).returning();
+    return created;
+  }
+
+  async createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation> {
+    const [created] = await db.insert(budgetAllocations).values(allocation).returning();
+    return created;
   }
 
   // Campaign operations

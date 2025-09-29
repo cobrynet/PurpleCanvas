@@ -12,7 +12,7 @@ import {
   insertLeadSchema,
   insertOpportunitySchema,
   insertMarketingTaskSchema,
-  insertGoalSchema 
+  insertBusinessGoalSchema 
 } from "@shared/schema";
 import { assets } from "@shared/schema";
 import { createSocialPost, getSocialPosts } from "../app/api/social/posts/route";
@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/goals', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const goalData = insertGoalSchema.parse(req.body);
+      const goalData = insertBusinessGoalSchema.parse(req.body);
       
       // Verify user has access to the organization
       const membership = await storage.getUserMembership(userId, goalData.organizationId);
@@ -241,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create the goal
-      const goal = await storage.createGoal(goalData);
+      const goal = await storage.createBusinessGoal(goalData);
       
       // Generate initial tasks based on goals (mock AI)
       const generatedTasks = await generateInitialTasks(goalData, userId);
@@ -264,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No access to this organization" });
       }
       
-      const goals = await storage.getGoals(orgId);
+      const goals = await storage.getBusinessGoals(orgId);
       res.json(goals);
     } catch (error) {
       console.error("Error fetching goals:", error);

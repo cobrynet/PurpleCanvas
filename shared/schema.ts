@@ -549,6 +549,9 @@ export const insertMembershipSchema = createInsertSchema(memberships).omit({
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({
   id: true,
   createdAt: true,
+}).extend({
+  startAt: z.string().optional().nullable().transform(val => val ? new Date(val) : null),
+  endAt: z.string().optional().nullable().transform(val => val ? new Date(val) : null),
 });
 
 export const insertLeadSchema = createInsertSchema(leads).omit({

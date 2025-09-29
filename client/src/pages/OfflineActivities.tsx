@@ -90,7 +90,7 @@ export default function OfflineActivities() {
     data: activities = [], 
     isLoading: activitiesLoading 
   } = useQuery({
-    queryKey: ["/api/offline-activities"],
+    queryKey: ["/api/marketing/offline"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
   });
@@ -98,10 +98,10 @@ export default function OfflineActivities() {
   // Create offline activity mutation
   const createActivityMutation = useMutation({
     mutationFn: async (activityData: any) => {
-      return await apiRequest("/api/offline-activities", "POST", activityData);
+      return await apiRequest("/api/marketing/offline", "POST", activityData);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/offline-activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/marketing/offline"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       
       toast({

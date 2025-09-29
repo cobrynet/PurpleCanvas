@@ -948,8 +948,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       
-      // Validate update data (exclude organizationId and createdByUserId from updates)
-      const { organizationId, createdByUserId, ...updateData } = req.body;
+      // Validate update data - only allow specific fields to be updated
+      const updateSchema = insertOfflineActivitySchema.partial().pick({
+        title: true,
+        type: true,
+        activityDate: true,
+        budget: true,
+        description: true,
+        assetIds: true
+      });
+      
+      const updateData = updateSchema.parse(req.body);
       
       const updatedActivity = await storage.updateOfflineActivity(id, orgId, updateData);
       

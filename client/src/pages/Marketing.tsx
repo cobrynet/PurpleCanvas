@@ -89,14 +89,17 @@ export default function Marketing() {
       const initResponse = await fetch("/api/upload/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name })
+        body: JSON.stringify({ 
+          filename: file.name,
+          organizationId: currentOrg?.id
+        })
       });
       
       if (!initResponse.ok) {
         throw new Error("Failed to get upload URL");
       }
       
-      const { uploadUrl, publicUrl, objectPath } = await initResponse.json();
+      const { uploadUrl, objectPath } = await initResponse.json();
       
       // Step 2: Upload file directly to object storage
       const uploadResponse = await fetch(uploadUrl, {
@@ -117,7 +120,6 @@ export default function Marketing() {
         filename: file.name,
         mimeType: file.type,
         sizeBytes: file.size,
-        url: publicUrl,
         objectPath: objectPath,
         organizationId: currentOrg?.id
       };

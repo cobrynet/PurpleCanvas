@@ -336,6 +336,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Private object serving endpoint for uploaded assets
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      // For now, allow access to all uploaded assets for authenticated users
+      // In a more complex system, you might check asset ownership/org membership
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving private object:", error);
+      if (error instanceof Error && error.name === 'ObjectNotFoundError') {
+        return res.status(404).json({ error: "File not found" });
+      }
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Public object serving endpoint
   app.get("/public-objects/:filePath(*)", async (req, res) => {
     const filePath = req.params.filePath;
@@ -356,15 +381,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload routes
   app.post('/api/upload/init', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const { organizationId, filename } = req.body;
+      
+      if (!organizationId) {
+        return res.status(400).json({ error: 'Organization ID is required' });
+      }
+      
+      // Verify user has access to this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const hasAccess = userOrgs.some(org => org.id === organizationId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Access denied to this organization' });
+      }
+      
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
       
-      const filename = req.body?.filename || 'file';
-      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename);
+      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename || 'file');
       
       res.json({
         uploadUrl,
-        publicUrl,
         objectPath,
         method: 'PUT'
       });
@@ -379,8 +417,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const body = req.body;
       
-      if (!body.url || !body.objectPath) {
-        return res.status(400).json({ error: 'Missing required fields: url and objectPath' });
+      if (!body.objectPath || !body.organizationId) {
+        return res.status(400).json({ error: 'Missing required fields: objectPath and organizationId' });
+      }
+      
+      // Verify user has access to this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const hasAccess = userOrgs.some(org => org.id === body.organizationId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Access denied to this organization' });
       }
 
       // Determine file type from mime type
@@ -393,17 +439,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         assetType = 'ARCHIVE';
       }
 
-      // Real asset data from actual upload
+      // Create asset data with normalized object path for serving
       const assetData = {
-        organizationId: body.organizationId || '00000000-0000-0000-0000-000000000001',
+        organizationId: body.organizationId,
         type: assetType,
         mimeType: body.mimeType || 'application/octet-stream',
         sizeBytes: body.sizeBytes || 0,
         width: body.width || null,
         height: body.height || null,
         checksumSha256: body.checksumSha256 || `checksum-${Date.now()}`,
-        url: body.url, // Real URL from object storage
-        thumbUrl: body.thumbUrl || null,
+        url: body.objectPath, // Use object path for serving, not direct GCS URL
+        thumbUrl: null,
         title: body.title || body.filename || 'Uploaded File',
         tags: body.tags || ['upload'],
         folder: body.folder || 'uploads',
@@ -420,8 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           url: asset.url,
           type: asset.type,
           title: asset.title,
-          createdAt: asset.createdAt,
-          objectPath: body.objectPath
+          createdAt: asset.createdAt
         }
       });
     } catch (error) {

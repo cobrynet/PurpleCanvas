@@ -18,9 +18,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit3, Megaphone, Plus } from "lucide-react";
+import { Edit3, Megaphone, Plus, MapPin, CalendarIcon, Euro } from "lucide-react";
 import { Link } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
 
 // Post Organici Section Component
 function PostOrganiciSection() {
@@ -760,6 +762,147 @@ function CampagneSection() {
   );
 }
 
+// Offline Activities Section Component
+function OfflineSection() {
+  const { user, isAuthenticated } = useAuth();
+  const currentOrg = user?.organizations?.[0];
+  const currentMembership = currentOrg?.membership;
+
+  // Check if user has marketing access
+  const hasMarketingAccess = currentMembership && 
+    ['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(currentMembership.role);
+
+  // Fetch offline activities (limit to last 5 for overview)
+  const { 
+    data: activities = [], 
+    isLoading: activitiesLoading,
+    error: activitiesError 
+  } = useQuery({
+    queryKey: ["/api/organizations", currentOrg?.id, "offline-activities"],
+    enabled: !!currentOrg?.id && isAuthenticated && hasMarketingAccess,
+    retry: false,
+  });
+
+  const activityTypes = [
+    { value: "FIERA", label: "Fiera", color: "bg-blue-100 text-blue-800" },
+    { value: "EVENTO", label: "Evento", color: "bg-green-100 text-green-800" },
+    { value: "STAMPA", label: "Stampa", color: "bg-purple-100 text-purple-800" },
+    { value: "PR", label: "PR", color: "bg-pink-100 text-pink-800" },
+    { value: "SPONSORSHIP", label: "Sponsorizzazione", color: "bg-orange-100 text-orange-800" },
+    { value: "ALTRO", label: "Altro", color: "bg-slate-100 text-slate-800" }
+  ];
+
+  const getActivityTypeInfo = (type: string) => {
+    return activityTypes.find(t => t.value === type) || { label: type, color: "bg-gray-100 text-gray-800" };
+  };
+
+  if (activitiesLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (activitiesError) {
+    return (
+      <Card>
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">Errore nel caricamento delle attività offline</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Attività Marketing Offline</h2>
+          <p className="text-sm text-gray-600">Gestisci fiere, eventi, PR e altre attività offline</p>
+        </div>
+        <Link href="/marketing/offline">
+          <Button className="flex items-center space-x-2" data-testid="view-all-offline-activities">
+            <MapPin className="w-4 h-4" />
+            <span>Vedi tutte</span>
+          </Button>
+        </Link>
+      </div>
+
+      {(activities as any[]).length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <MapPin className="w-12 h-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Nessuna attività offline</h3>
+            <p className="text-gray-600 text-center mb-4">
+              Inizia creando la tua prima attività di marketing offline
+            </p>
+            <Link href="/marketing/offline">
+              <Button data-testid="create-first-offline-activity">
+                Crea prima attività
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {(activities as any[]).slice(0, 3).map((activity: any) => {
+            const typeInfo = getActivityTypeInfo(activity.type);
+            return (
+              <Card key={activity.id} data-testid={`offline-activity-card-${activity.id}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base">{activity.title}</CardTitle>
+                      <div className="flex items-center space-x-3">
+                        <Badge className={typeInfo.color}>
+                          {typeInfo.label}
+                        </Badge>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <CalendarIcon className="w-3 h-3 mr-1" />
+                          {format(new Date(activity.activityDate), 'dd MMM yyyy', { locale: it })}
+                        </div>
+                        {activity.budget && (
+                          <div className="flex items-center text-xs text-gray-500">
+                            <Euro className="w-3 h-3 mr-1" />
+                            €{(activity.budget / 100).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {activity.taskId && (
+                      <Badge variant="outline" className="text-green-600 border-green-200 text-xs">
+                        Task collegato
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                {activity.description && (
+                  <CardContent className="pt-0">
+                    <p className="text-sm text-gray-600 line-clamp-2">{activity.description}</p>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })}
+          
+          {(activities as any[]).length > 3 && (
+            <Card className="border-dashed">
+              <CardContent className="text-center py-4">
+                <Link href="/marketing/offline">
+                  <Button variant="ghost" className="text-sm" data-testid="view-more-offline-activities">
+                    Visualizza altre {(activities as any[]).length - 3} attività...
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function Marketing() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -811,7 +954,7 @@ export default function Marketing() {
       <div data-testid="marketing-content">
         {/* Marketing Navigation Tabs */}
         <Tabs defaultValue="overview" className="mb-6">
-          <TabsList className="grid w-fit grid-cols-3" data-testid="marketing-tabs">
+          <TabsList className="grid w-fit grid-cols-4" data-testid="marketing-tabs">
             <TabsTrigger value="overview" data-testid="tab-overview">
               Overview
             </TabsTrigger>
@@ -820,6 +963,9 @@ export default function Marketing() {
             </TabsTrigger>
             <TabsTrigger value="campagne" data-testid="tab-campagne">
               Campagne
+            </TabsTrigger>
+            <TabsTrigger value="offline" data-testid="tab-offline">
+              Offline
             </TabsTrigger>
           </TabsList>
           
@@ -837,6 +983,10 @@ export default function Marketing() {
 
           <TabsContent value="campagne">
             <CampagneSection />
+          </TabsContent>
+
+          <TabsContent value="offline">
+            <OfflineSection />
           </TabsContent>
         </Tabs>
       </div>

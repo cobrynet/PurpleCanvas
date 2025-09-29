@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit3, Megaphone, Plus, MapPin, CalendarIcon, Euro } from "lucide-react";
+import { Edit3, Megaphone, Plus, MapPin, CalendarIcon, Euro, Edit, Trash2, CheckSquare } from "lucide-react";
 import { Link } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
@@ -366,6 +366,8 @@ function CampagneSection() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [isAdvCampaignModalOpen, setIsAdvCampaignModalOpen] = useState(false);
+  const [isEditCampaignModalOpen, setIsEditCampaignModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [advCampaignForm, setAdvCampaignForm] = useState({
     name: "",
     objective: "",
@@ -375,6 +377,14 @@ function CampagneSection() {
     endAt: "",
     assetIds: [],
     createTask: true
+  });
+  const [editCampaignForm, setEditCampaignForm] = useState({
+    name: "",
+    objective: "",
+    budget: "",
+    startAt: "",
+    endAt: "",
+    status: ""
   });
   
   const currentOrg = user?.organizations?.[0];
@@ -403,6 +413,16 @@ function CampagneSection() {
   } = useQuery({
     queryKey: ["/api/marketing/campaigns"],
     enabled: isAuthenticated && hasMarketingAccess,
+    retry: false,
+  });
+
+  // Fetch marketing tasks for campaigns
+  const { 
+    data: marketingTasks = [], 
+    isLoading: tasksLoading 
+  } = useQuery({
+    queryKey: ["/api/organizations", currentOrg?.id, "tasks"],
+    enabled: !!currentOrg?.id && isAuthenticated && hasMarketingAccess,
     retry: false,
   });
 
@@ -438,6 +458,81 @@ function CampagneSection() {
       });
     },
   });
+
+  // Update ADV Campaign mutation
+  const updateAdvCampaignMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      return await apiRequest(`/api/marketing/campaigns/${id}`, "PATCH", updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/marketing/campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "tasks"] });
+      toast({
+        title: "Campagna aggiornata!",
+        description: "La campagna pubblicitaria è stata aggiornata con successo.",
+      });
+      setIsEditCampaignModalOpen(false);
+      setEditingCampaign(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error?.message || "Errore durante l'aggiornamento della campagna",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle edit campaign
+  const handleEditCampaign = (campaign: any) => {
+    setEditingCampaign(campaign);
+    setEditCampaignForm({
+      name: campaign.name || "",
+      objective: campaign.objective || "",
+      budget: campaign.budget ? campaign.budget.toString() : "",
+      startAt: campaign.startAt ? new Date(campaign.startAt).toISOString().split('T')[0] : "",
+      endAt: campaign.endAt ? new Date(campaign.endAt).toISOString().split('T')[0] : "",
+      status: campaign.status || "DRAFT"
+    });
+    setIsEditCampaignModalOpen(true);
+  };
+
+  // Handle close edit modal
+  const handleCloseEditModal = () => {
+    setIsEditCampaignModalOpen(false);
+    setEditingCampaign(null);
+    setEditCampaignForm({
+      name: "",
+      objective: "",
+      budget: "",
+      startAt: "",
+      endAt: "",
+      status: ""
+    });
+  };
+
+  // Handle update campaign
+  const handleUpdateCampaign = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingCampaign) return;
+    
+    const updates = {
+      name: editCampaignForm.name,
+      objective: editCampaignForm.objective,
+      budget: editCampaignForm.budget ? parseFloat(editCampaignForm.budget) : null,
+      startAt: editCampaignForm.startAt ? new Date(editCampaignForm.startAt).toISOString() : null,
+      endAt: editCampaignForm.endAt ? new Date(editCampaignForm.endAt).toISOString() : null,
+      status: editCampaignForm.status
+    };
+
+    updateAdvCampaignMutation.mutate({ id: editingCampaign.id, updates });
+  };
+
+  // Get tasks for a specific campaign
+  const getCampaignTasks = (campaignId: string) => {
+    return marketingTasks.filter((task: any) => task.campaignId === campaignId);
+  };
 
   const handleCreateAdvCampaign = (e: React.FormEvent) => {
     e.preventDefault();
@@ -645,6 +740,120 @@ function CampagneSection() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Campaign Modal */}
+        <Dialog open={isEditCampaignModalOpen} onOpenChange={handleCloseEditModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Modifica Campagna ADV</DialogTitle>
+            </DialogHeader>
+            
+            <form onSubmit={handleUpdateCampaign} className="space-y-6 py-4">
+              {/* Nome */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome Campagna *</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="Es: Campagna Black Friday 2024"
+                  value={editCampaignForm.name}
+                  onChange={(e) => setEditCampaignForm(prev => ({ ...prev, name: e.target.value }))}
+                  data-testid="edit-name-input"
+                  required
+                />
+              </div>
+
+              {/* Obiettivo */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-objective">Obiettivo</Label>
+                <Textarea
+                  id="edit-objective"
+                  placeholder="Descrivi l'obiettivo della campagna pubblicitaria..."
+                  value={editCampaignForm.objective}
+                  onChange={(e) => setEditCampaignForm(prev => ({ ...prev, objective: e.target.value }))}
+                  data-testid="edit-objective-input"
+                  rows={3}
+                />
+              </div>
+
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Stato</Label>
+                <Select 
+                  value={editCampaignForm.status} 
+                  onValueChange={(value) => setEditCampaignForm(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger data-testid="edit-status-select">
+                    <SelectValue placeholder="Seleziona stato campagna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Bozza</SelectItem>
+                    <SelectItem value="ACTIVE">Attiva</SelectItem>
+                    <SelectItem value="PAUSED">In Pausa</SelectItem>
+                    <SelectItem value="COMPLETED">Completata</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Budget */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-budget">Budget (€)</Label>
+                <Input
+                  id="edit-budget"
+                  type="number"
+                  placeholder="1000"
+                  value={editCampaignForm.budget}
+                  onChange={(e) => setEditCampaignForm(prev => ({ ...prev, budget: e.target.value }))}
+                  data-testid="edit-budget-input"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              {/* Periodo */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-start">Data Inizio</Label>
+                  <Input
+                    id="edit-start"
+                    type="date"
+                    value={editCampaignForm.startAt}
+                    onChange={(e) => setEditCampaignForm(prev => ({ ...prev, startAt: e.target.value }))}
+                    data-testid="edit-start-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-end">Data Fine</Label>
+                  <Input
+                    id="edit-end"
+                    type="date"
+                    value={editCampaignForm.endAt}
+                    onChange={(e) => setEditCampaignForm(prev => ({ ...prev, endAt: e.target.value }))}
+                    data-testid="edit-end-input"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleCloseEditModal}
+                  data-testid="cancel-edit-campaign"
+                >
+                  Annulla
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateAdvCampaignMutation.isPending}
+                  data-testid="update-campaign-submit"
+                >
+                  {updateAdvCampaignMutation.isPending ? "Aggiornamento..." : "Aggiorna Campagna"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Unified Campaigns Grid */}
@@ -753,6 +962,47 @@ function CampagneSection() {
                     </span>
                   </div>
                 </div>
+                
+                {/* Task collegati */}
+                {(() => {
+                  const campaignTasks = getCampaignTasks(campaign.id);
+                  return campaignTasks.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-muted-foreground">Task collegati:</span>
+                        <Badge variant="outline" className="text-xs">
+                          {campaignTasks.length}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        {campaignTasks.slice(0, 2).map((task: any) => (
+                          <div key={task.id} className="flex items-center text-xs text-muted-foreground">
+                            <CheckSquare className="w-3 h-3 mr-1" />
+                            <span className="truncate">{task.title}</span>
+                          </div>
+                        ))}
+                        {campaignTasks.length > 2 && (
+                          <div className="text-xs text-muted-foreground">+{campaignTasks.length - 2} altri task...</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                
+                {/* Action buttons - only for ADV campaigns */}
+                {campaign.source === 'adv' && (
+                  <div className="mt-4 pt-4 border-t flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditCampaign(campaign)}
+                      data-testid={`edit-campaign-${campaign.id}`}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Modifica
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

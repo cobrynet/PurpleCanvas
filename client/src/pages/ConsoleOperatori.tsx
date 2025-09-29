@@ -55,12 +55,12 @@ export default function ConsoleOperatori() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [transferAgent, setTransferAgent] = useState<string>("");
   
-  // Check if user is SUPER_ADMIN
-  const isSuperAdmin = user?.organizations?.some(org => 
-    org.membership?.role === 'SUPER_ADMIN'
+  // Check if user has operator access (SUPER_ADMIN, ORG_ADMIN, SALES, or MARKETER)
+  const hasOperatorAccess = user?.organizations?.some(org => 
+    ['SUPER_ADMIN', 'ORG_ADMIN', 'SALES', 'MARKETER'].includes(org.membership?.role || '')
   );
 
-  if (!isSuperAdmin) {
+  if (!hasOperatorAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-96">
@@ -70,7 +70,7 @@ export default function ConsoleOperatori() {
               Accesso Negato
             </CardTitle>
             <CardDescription>
-              Solo i Super Admin possono accedere alla Console Operatori.
+              Solo gli Amministratori, il team Vendite e Marketing possono accedere alla Console Operatori.
             </CardDescription>
           </CardHeader>
         </Card>

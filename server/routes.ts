@@ -206,16 +206,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.id;
-      
-      // Check if user has access to this organization
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const organization = await storage.getOrganization(orgId);
       if (!organization) {
@@ -254,16 +247,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:orgId/goals', isAuthenticated, async (req: any, res) => {
+  app.get('/api/goals', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const { orgId } = req.params;
-      
-      // Verify user has access to the organization
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "No access to this organization" });
-      }
+      const orgId = req.currentOrganization;
       
       const goals = await storage.getBusinessGoals(orgId);
       res.json(goals);
@@ -274,16 +260,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats
-  app.get('/api/organizations/:id/dashboard-stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/dashboard-stats', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.id;
-      
-      // Check if user has access to this organization
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const stats = await storage.getDashboardStats(orgId);
       res.json(stats);
@@ -294,16 +273,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recent activity
-  app.get('/api/organizations/:id/recent-activity', isAuthenticated, async (req: any, res) => {
+  app.get('/api/recent-activity', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.id;
-      
-      // Check if user has access to this organization
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const activities = await storage.getRecentActivity(orgId);
       res.json(activities);
@@ -314,16 +286,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upcoming deadlines
-  app.get('/api/organizations/:id/upcoming-deadlines', isAuthenticated, async (req: any, res) => {
+  app.get('/api/upcoming-deadlines', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.id;
-      
-      // Check if user has access to this organization
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const deadlines = await storage.getUpcomingDeadlines(orgId);
       res.json(deadlines);
@@ -334,14 +299,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Campaign routes
-  app.post('/api/organizations/:orgId/campaigns', isAuthenticated, async (req: any, res) => {
+  app.post('/api/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
-      // Check if user has access and permission
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership || !['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -358,15 +321,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:orgId/campaigns', isAuthenticated, async (req: any, res) => {
+  app.get('/api/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const campaigns = await storage.getCampaigns(orgId);
       res.json(campaigns);
@@ -466,13 +423,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Lead routes
-  app.post('/api/organizations/:orgId/leads', isAuthenticated, async (req: any, res) => {
+  app.post('/api/leads', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership || !['ORG_ADMIN', 'SALES'].includes(membership.role)) {
+      if (!['ORG_ADMIN', 'SALES'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -490,15 +447,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:orgId/leads', isAuthenticated, async (req: any, res) => {
+  app.get('/api/leads', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const leads = await storage.getLeads(orgId);
       res.json(leads);
@@ -509,13 +460,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Opportunity routes
-  app.post('/api/organizations/:orgId/opportunities', isAuthenticated, async (req: any, res) => {
+  app.post('/api/opportunities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership || !['ORG_ADMIN', 'SALES'].includes(membership.role)) {
+      if (!['ORG_ADMIN', 'SALES'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -533,15 +484,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:orgId/opportunities', isAuthenticated, async (req: any, res) => {
+  app.get('/api/opportunities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const opportunities = await storage.getOpportunities(orgId);
       res.json(opportunities);
@@ -552,15 +497,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Task routes
-  app.post('/api/organizations/:orgId/tasks', isAuthenticated, async (req: any, res) => {
+  app.post('/api/tasks', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const taskData = insertMarketingTaskSchema.parse({
         ...req.body,
@@ -575,15 +514,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:orgId/tasks', isAuthenticated, async (req: any, res) => {
+  app.get('/api/tasks', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const tasks = await storage.getMarketingTasks(orgId);
       res.json(tasks);
@@ -594,15 +527,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Offline Activity routes
-  app.post('/api/organizations/:orgId/offline-activities', isAuthenticated, async (req: any, res) => {
+  app.post('/api/offline-activities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
       
       // Only ORG_ADMIN and MARKETER can create offline activities
       if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
@@ -642,15 +571,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/organizations/:orgId/offline-activities', isAuthenticated, async (req: any, res) => {
+  app.get('/api/offline-activities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const orgId = req.params.orgId;
-      
-      const membership = await storage.getUserMembership(userId, orgId);
-      if (!membership) {
-        return res.status(403).json({ message: "Access denied" });
-      }
+      const orgId = req.currentOrganization;
       
       const activities = await storage.getOfflineActivities(orgId);
       res.json(activities);

@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, createContext } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "./useAuth";
 import type { Organization, Membership } from "@shared/schema";
+import { queryClient } from "@/lib/queryClient";
 
 type OrganizationWithMembership = Organization & { membership: Membership };
 
@@ -75,6 +76,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     if (organization) {
       setSelectedOrganization(organization);
       setCookie(ORGANIZATION_COOKIE_KEY, organizationId);
+      
+      // Invalidate all queries to refetch data for the new organization
+      queryClient.invalidateQueries();
     }
   };
 

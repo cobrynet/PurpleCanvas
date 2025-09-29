@@ -310,7 +310,6 @@ export default function SettingsPage() {
                         <SelectItem value="SALES">Sales</SelectItem>
                         <SelectItem value="MARKETER">Marketer</SelectItem>
                         <SelectItem value="ORG_ADMIN">Org Admin</SelectItem>
-                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -332,8 +331,7 @@ export default function SettingsPage() {
                   { role: "VIEWER", description: "Può visualizzare dati ma non modificare" },
                   { role: "SALES", description: "Gestisce lead, opportunità e pipeline" },
                   { role: "MARKETER", description: "Gestisce campagne e contenuti marketing" },
-                  { role: "ORG_ADMIN", description: "Amministratore dell'organizzazione" },
-                  { role: "SUPER_ADMIN", description: "Accesso completo alla piattaforma" }
+                  { role: "ORG_ADMIN", description: "Amministratore dell'organizzazione" }
                 ].map((permission) => (
                   <div key={permission.role} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>

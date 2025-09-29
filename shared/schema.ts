@@ -466,6 +466,11 @@ export const insertConversationMessageSchema = createInsertSchema(conversationMe
   createdAt: true,
 });
 
+export const insertAssetLinkSchema = createInsertSchema(assetLinks).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -491,3 +496,5 @@ export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
 export type AgentPresence = typeof agentPresence.$inferSelect;
+export type AssetLink = typeof assetLinks.$inferSelect;
+export type InsertAssetLink = z.infer<typeof insertAssetLinkSchema>;

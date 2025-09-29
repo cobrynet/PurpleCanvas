@@ -391,6 +391,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AssetLink routes
+  app.post('/api/assets/:id/link', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const assetId = req.params.id;
+      const { relatedType, relatedId, organizationId } = req.body;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      if (!relatedType || !relatedId || !organizationId) {
+        return res.status(400).json({ 
+          error: "Missing required fields: relatedType, relatedId, organizationId" 
+        });
+      }
+      
+      // Verify user has access to this organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const hasAccess = userOrgs.some(org => org.id === organizationId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: 'Access denied to this organization' });
+      }
+      
+      // Verify asset exists and belongs to the organization
+      const asset = await storage.getAsset(assetId, organizationId);
+      if (!asset) {
+        return res.status(404).json({ error: 'Asset not found or access denied' });
+      }
+      
+      // Validate relatedType
+      const validTypes = ['campaign', 'content', 'social_post', 'lead', 'opportunity'];
+      if (!validTypes.includes(relatedType)) {
+        return res.status(400).json({ 
+          error: `Invalid relatedType. Must be one of: ${validTypes.join(', ')}` 
+        });
+      }
+      
+      // Create asset link
+      const assetLinkData = {
+        organizationId,
+        assetId: asset.id,
+        relatedType,
+        relatedId
+      };
+      
+      const assetLink = await storage.createAssetLink(assetLinkData);
+      
+      res.json({
+        success: true,
+        assetLink: {
+          id: assetLink.id,
+          assetId: assetLink.assetId,
+          relatedType: assetLink.relatedType,
+          relatedId: assetLink.relatedId,
+          createdAt: assetLink.createdAt
+        }
+      });
+    } catch (error) {
+      console.error('Error creating asset link:', error);
+      res.status(500).json({ error: 'Failed to create asset link' });
+    }
+  });
+
   // Upload routes
   app.post('/api/upload/init', isAuthenticated, async (req: any, res) => {
     try {

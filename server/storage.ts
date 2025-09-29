@@ -7,6 +7,7 @@ import {
   opportunities,
   marketingTasks,
   assets,
+  assetLinks,
   services,
   orgServiceOrders,
   type User,
@@ -24,6 +25,8 @@ import {
   type MarketingTask,
   type InsertMarketingTask,
   type Asset,
+  type AssetLink,
+  type InsertAssetLink,
   type Service,
   type OrgServiceOrder,
 } from "@shared/schema";
@@ -71,7 +74,12 @@ export interface IStorage {
 
   // Asset operations
   getAssets(orgId: string): Promise<Asset[]>;
+  getAsset(id: string, orgId: string): Promise<Asset | undefined>;
   getAssetByObjectPath(objectPath: string): Promise<Asset | undefined>;
+  
+  // AssetLink operations
+  createAssetLink(assetLink: InsertAssetLink): Promise<AssetLink>;
+  getAssetLinks(assetId: string, orgId: string): Promise<AssetLink[]>;
 
   // Service operations
   getServices(): Promise<Service[]>;
@@ -312,12 +320,42 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(assets.createdAt));
   }
 
+  async getAsset(id: string, orgId: string): Promise<Asset | undefined> {
+    const [asset] = await db
+      .select()
+      .from(assets)
+      .where(and(
+        eq(assets.id, id),
+        eq(assets.organizationId, orgId)
+      ));
+    return asset;
+  }
+
   async getAssetByObjectPath(objectPath: string): Promise<Asset | undefined> {
     const [asset] = await db
       .select()
       .from(assets)
       .where(eq(assets.url, objectPath));
     return asset;
+  }
+
+  // AssetLink operations
+  async createAssetLink(assetLinkData: InsertAssetLink): Promise<AssetLink> {
+    const [assetLink] = await db
+      .insert(assetLinks)
+      .values(assetLinkData)
+      .returning();
+    return assetLink;
+  }
+
+  async getAssetLinks(assetId: string, orgId: string): Promise<AssetLink[]> {
+    return await db
+      .select()
+      .from(assetLinks)
+      .where(and(
+        eq(assetLinks.assetId, assetId),
+        eq(assetLinks.organizationId, orgId)
+      ));
   }
 
   // Service operations

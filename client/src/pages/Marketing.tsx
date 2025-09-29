@@ -181,10 +181,33 @@ export default function Marketing() {
         organizationId: currentOrg?.id
       };
       
+      // Create asset link if asset was uploaded
+      if (assetId) {
+        try {
+          const linkResponse = await fetch(`/api/assets/${assetId}/link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              relatedType: 'social_post',
+              relatedId: `temp-${Date.now()}`, // Temporary ID until social post API is implemented
+              organizationId: currentOrg?.id
+            })
+          });
+          
+          if (linkResponse.ok) {
+            const linkResult = await linkResponse.json();
+            console.log('Asset linked successfully:', linkResult.assetLink);
+          }
+        } catch (linkError) {
+          console.error('Failed to link asset:', linkError);
+          // Don't fail the entire save operation if linking fails
+        }
+      }
+      
       // For now, just show success message (you can add API endpoint later)
       toast({
-        title: isDraft ? "Bozza salvata" : "Post pianificato",
-        description: `Post "${postForm.title}" ${isDraft ? "salvato come bozza" : "pianificato con successo"}`
+        title: isDraft ? "Bozza salvata" : "Post pianificato", 
+        description: `Post "${postForm.title}" ${isDraft ? "salvato come bozza" : "pianificato con successo"}${assetId ? " con asset collegato" : ""}`
       });
       
       // Reset form and close modal

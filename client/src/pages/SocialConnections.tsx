@@ -43,42 +43,7 @@ export default function SocialConnections() {
     queryKey: ['/api/social/connections'],
   });
 
-  // Check for OAuth success/error in URL params
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true') {
-      toast({
-        title: "Connessione riuscita!",
-        description: "Il tuo account social è stato collegato con successo.",
-      });
-      // Clean URL
-      window.history.replaceState({}, '', '/social-connections');
-    } else if (urlParams.get('error') === 'true') {
-      toast({
-        title: "Errore nella connessione",
-        description: "Si è verificato un errore durante il collegamento dell'account.",
-        variant: "destructive",
-      });
-      // Clean URL
-      window.history.replaceState({}, '', '/social-connections');
-    }
-  }, [toast]);
-
-  if (isLoading) {
-    return (
-      <MainLayout
-        title="Collega i tuoi Social"
-        description="Connetti i tuoi account social per pubblicare automaticamente i contenuti"
-        icon={Facebook}
-      >
-        <div className="flex items-center justify-center py-12" data-testid="loading-social-connections">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </MainLayout>
-    );
-  }
-
-  // Connect to social provider
+  // Connect to social provider - MUST be before any conditional returns
   const connectMutation = useMutation({
     mutationFn: async (provider: string) => {
       const response = await apiRequest('GET', `/api/social/oauth/${provider}/auth`);
@@ -120,6 +85,28 @@ export default function SocialConnections() {
     },
   });
 
+  // Check for OAuth success/error in URL params - MUST be before conditional returns
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      toast({
+        title: "Connessione riuscita!",
+        description: "Il tuo account social è stato collegato con successo.",
+      });
+      // Clean URL
+      window.history.replaceState({}, '', '/social-connections');
+    } else if (urlParams.get('error') === 'true') {
+      toast({
+        title: "Errore nella connessione",
+        description: "Si è verificato un errore durante il collegamento dell'account.",
+        variant: "destructive",
+      });
+      // Clean URL
+      window.history.replaceState({}, '', '/social-connections');
+    }
+  }, [toast]);
+
+  // Helper functions
   const handleConnect = (providerId: string) => {
     setIsConnecting(providerId);
     connectMutation.mutate(providerId);
@@ -139,6 +126,21 @@ export default function SocialConnections() {
     const provider = socialProviders.find(p => p.id === providerId);
     return provider?.icon || AlertCircle;
   };
+
+  // Conditional rendering - AFTER all hooks
+  if (isLoading) {
+    return (
+      <MainLayout
+        title="Collega i tuoi Social"
+        description="Connetti i tuoi account social per pubblicare automaticamente i contenuti"
+        icon={Facebook}
+      >
+        <div className="flex items-center justify-center py-12" data-testid="loading-social-connections">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout

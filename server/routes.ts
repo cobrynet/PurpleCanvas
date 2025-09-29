@@ -529,6 +529,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's organizations
       const organizations = await storage.getUserOrganizations(userId);
       
+      // Prevent caching to ensure fresh user data after login
+      res.set('Cache-Control', 'no-store');
       res.json({ ...user, organizations });
     } catch (error) {
       console.error("Error fetching user:", error);

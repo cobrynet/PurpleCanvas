@@ -2,6 +2,8 @@ import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
 
 import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import bcrypt from "bcryptjs";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
@@ -83,11 +85,99 @@ async function upsertUser(
   }
 }
 
+// Hash password helper
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12;
+  return await bcrypt.hash(password, saltRounds);
+}
+
+// Verify password helper
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await bcrypt.compare(password, hash);
+}
+
+// Create user with email/password and auto onboarding
+export async function createUserWithOnboarding(
+  email: string, 
+  password: string, 
+  firstName: string, 
+  lastName: string
+) {
+  // Hash password
+  const hashedPassword = await hashPassword(password);
+  
+  // Create user
+  const user = await storage.upsertUser({
+    id: crypto.randomUUID(),
+    email,
+    password: hashedPassword,
+    firstName,
+    lastName,
+  });
+
+  // Auto-create organization (same logic as OIDC)
+  const userOrgs = await storage.getUserOrganizations(user.id);
+  if (userOrgs.length === 0) {
+    const orgName = `${firstName || "User"}'s Organization`;
+    const defaultOrg = await storage.createOrganization({
+      name: orgName,
+    });
+
+    await storage.createMembership({
+      userId: user.id,
+      organizationId: defaultOrg.id,
+      role: 'ORG_ADMIN',
+    });
+  }
+
+  return user;
+}
+
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Configure Local Strategy for email/password authentication
+  passport.use('local', new LocalStrategy(
+    {
+      usernameField: 'email',
+      passwordField: 'password'
+    },
+    async (email, password, done) => {
+      try {
+        // Find user by email
+        const user = await storage.getUserByEmail(email);
+        if (!user) {
+          return done(null, false, { message: 'Email non trovato' });
+        }
+
+        // Check if user has password (could be OAuth-only user)
+        if (!user.password) {
+          return done(null, false, { message: 'Account creato tramite OAuth. Usa il login sociale.' });
+        }
+
+        // Verify password
+        const isValidPassword = await verifyPassword(password, user.password);
+        if (!isValidPassword) {
+          return done(null, false, { message: 'Password non corretta' });
+        }
+
+        // Success - return user (following existing session structure)
+        const userSession = {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        };
+
+        return done(null, userSession);
+      } catch (error) {
+        return done(error);
+      }
+    }
+  ));
 
   const config = await getOidcConfig();
 
@@ -142,15 +232,109 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+
+  // Email/password registration endpoint
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+
+      // Basic validation
+      if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ 
+          message: "Email, password, nome e cognome sono obbligatori" 
+        });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ 
+          message: "La password deve essere di almeno 8 caratteri" 
+        });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: "Esiste già un account con questa email" 
+        });
+      }
+
+      // Create user with automatic onboarding
+      const user = await createUserWithOnboarding(email, password, firstName, lastName);
+
+      // Login the user (create session)
+      req.login({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      }, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Errore durante il login automatico" });
+        }
+        
+        res.status(201).json({ 
+          message: "Account creato con successo",
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Errore durante la registrazione" });
+    }
+  });
+
+  // Email/password login endpoint
+  app.post("/api/auth/login", (req, res, next) => {
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Errore del server" });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ 
+          message: info?.message || "Credenziali non valide" 
+        });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Errore durante il login" });
+        }
+        
+        res.json({ 
+          message: "Login effettuato con successo",
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          }
+        });
+      });
+    })(req, res, next);
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  // For email/password users, we just check if they're logged in (no token refresh needed)
+  if (!user.expires_at) {
+    return next();
+  }
+
+  // For OAuth users, check token expiration and refresh if needed
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
     return next();

@@ -9,6 +9,7 @@ import {
   leads,
   opportunities,
   marketingTasks,
+  offlineActivities,
   assets,
   assetLinks,
   services,
@@ -27,6 +28,8 @@ import {
   type InsertOpportunity,
   type MarketingTask,
   type InsertMarketingTask,
+  type OfflineActivity,
+  type InsertOfflineActivity,
   type Asset,
   type AssetLink,
   type InsertAssetLink,
@@ -86,6 +89,12 @@ export interface IStorage {
   getMarketingTasks(orgId: string): Promise<MarketingTask[]>;
   getMarketingTask(id: string, orgId: string): Promise<MarketingTask | undefined>;
   updateMarketingTask(id: string, orgId: string, updates: Partial<MarketingTask>): Promise<MarketingTask | undefined>;
+
+  // Offline Activity operations
+  createOfflineActivity(activity: InsertOfflineActivity): Promise<OfflineActivity>;
+  getOfflineActivities(orgId: string): Promise<OfflineActivity[]>;
+  getOfflineActivity(id: string, orgId: string): Promise<OfflineActivity | undefined>;
+  updateOfflineActivity(id: string, orgId: string, updates: Partial<OfflineActivity>): Promise<OfflineActivity | undefined>;
 
   // Asset operations
   getAssets(orgId: string): Promise<Asset[]>;
@@ -346,6 +355,37 @@ export class DatabaseStorage implements IStorage {
       .update(marketingTasks)
       .set(updates)
       .where(and(eq(marketingTasks.id, id), eq(marketingTasks.organizationId, orgId)))
+      .returning();
+    return updated;
+  }
+
+  // Offline Activity operations
+  async createOfflineActivity(activity: InsertOfflineActivity): Promise<OfflineActivity> {
+    const [created] = await db.insert(offlineActivities).values(activity).returning();
+    return created;
+  }
+
+  async getOfflineActivities(orgId: string): Promise<OfflineActivity[]> {
+    return await db
+      .select()
+      .from(offlineActivities)
+      .where(eq(offlineActivities.organizationId, orgId))
+      .orderBy(desc(offlineActivities.createdAt));
+  }
+
+  async getOfflineActivity(id: string, orgId: string): Promise<OfflineActivity | undefined> {
+    const [activity] = await db
+      .select()
+      .from(offlineActivities)
+      .where(and(eq(offlineActivities.id, id), eq(offlineActivities.organizationId, orgId)));
+    return activity;
+  }
+
+  async updateOfflineActivity(id: string, orgId: string, updates: Partial<OfflineActivity>): Promise<OfflineActivity | undefined> {
+    const [updated] = await db
+      .update(offlineActivities)
+      .set(updates)
+      .where(and(eq(offlineActivities.id, id), eq(offlineActivities.organizationId, orgId)))
       .returning();
     return updated;
   }

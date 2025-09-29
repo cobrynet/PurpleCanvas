@@ -429,7 +429,7 @@ function CampagneSection() {
   // Create ADV Campaign mutation
   const createAdvCampaignMutation = useMutation({
     mutationFn: async (campaignData: any) => {
-      return await apiRequest("/api/marketing/campaigns", "POST", campaignData);
+      return await apiRequest("POST", "/api/marketing/campaigns", campaignData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketing/campaigns"] });
@@ -462,7 +462,7 @@ function CampagneSection() {
   // Update ADV Campaign mutation
   const updateAdvCampaignMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
-      return await apiRequest(`/api/marketing/campaigns/${id}`, "PATCH", updates);
+      return await apiRequest("PATCH", `/api/marketing/campaigns/${id}`, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketing/campaigns"] });

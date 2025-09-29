@@ -1576,6 +1576,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent presence API routes
+  app.put('/api/console/agents/presence', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const agentId = req.user.claims.sub;
+      const { status } = req.body;
+      
+      if (!status || !['ONLINE', 'AWAY', 'OFFLINE'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be ONLINE, AWAY, or OFFLINE" });
+      }
+      
+      // Validate with schema
+      const presenceData = { status };
+      const validData = insertAgentPresenceSchema.partial().parse(presenceData);
+      
+      // Update agent presence
+      const updatedPresence = await storage.updateAgentPresence(agentId, validData);
+      
+      res.json({
+        success: true,
+        presence: updatedPresence
+      });
+    } catch (error) {
+      console.error("Error updating agent presence:", error);
+      res.status(500).json({ message: "Failed to update agent presence" });
+    }
+  });
+
+  app.get('/api/console/agents/presence', isAuthenticated, requireSuperAdmin, async (req: any, res) => {
+    try {
+      const agentId = req.user.claims.sub;
+      
+      // Get current agent presence
+      const presence = await storage.getAgentPresence(agentId);
+      
+      if (!presence) {
+        // Create default presence if not exists
+        const defaultPresence = await storage.updateAgentPresence(agentId, {
+          status: 'OFFLINE',
+          currentChatCount: 0
+        });
+        return res.json(defaultPresence);
+      }
+      
+      res.json(presence);
+    } catch (error) {
+      console.error("Error fetching agent presence:", error);
+      res.status(500).json({ message: "Failed to fetch agent presence" });
+    }
+  });
+
   // Notification API routes
   app.post('/api/notifications/send', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {

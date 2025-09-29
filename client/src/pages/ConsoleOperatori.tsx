@@ -28,9 +28,12 @@ import {
   ArrowRight,
   X,
   AlertTriangle,
-  RefreshCcw
+  RefreshCcw,
+  Wifi,
+  WifiOff,
+  Moon
 } from "lucide-react";
-import type { Conversation, ConversationMessage } from "@shared/schema";
+import type { Conversation, ConversationMessage, AgentPresence } from "@shared/schema";
 
 interface ConversationWithMessages extends Conversation {
   messages: ConversationMessage[];
@@ -84,6 +87,35 @@ export default function ConsoleOperatori() {
   // Fetch available agents
   const { data: agents = [] } = useQuery<AgentOption[]>({
     queryKey: ['/api/console/agents'],
+  });
+
+  // Fetch current agent presence
+  const { data: agentPresence, refetch: refetchPresence } = useQuery<AgentPresence>({
+    queryKey: ['/api/console/agents/presence'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Update agent presence mutation
+  const updatePresenceMutation = useMutation({
+    mutationFn: async (status: 'ONLINE' | 'AWAY' | 'OFFLINE') => {
+      const response = await apiRequest('PUT', '/api/console/agents/presence', { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Status Aggiornato",
+        description: "Il tuo status è stato aggiornato con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/console/agents/presence'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/console/agents'] });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare lo status",
+        variant: "destructive",
+      });
+    }
   });
 
   // Accept conversation mutation
@@ -208,6 +240,28 @@ export default function ConsoleOperatori() {
     }
   };
 
+  const getPresenceIcon = (status?: string) => {
+    switch (status) {
+      case 'ONLINE':
+        return <Wifi className="h-4 w-4 text-green-600" />;
+      case 'AWAY':
+        return <Moon className="h-4 w-4 text-yellow-500" />;
+      case 'OFFLINE':
+        return <WifiOff className="h-4 w-4 text-gray-500" />;
+      default:
+        return <WifiOff className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getPresenceLabel = (status?: string) => {
+    switch (status) {
+      case 'ONLINE': return 'Online';
+      case 'AWAY': return 'Assente';
+      case 'OFFLINE': return 'Offline';
+      default: return 'Offline';
+    }
+  };
+
   const pendingConversations = conversations.filter(conv => conv.status === 'PENDING');
   const activeConversations = conversations.filter(conv => conv.status === 'OPEN');
 
@@ -220,16 +274,60 @@ export default function ConsoleOperatori() {
             Gestisci le conversazioni dei clienti e assegna gli agenti
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => refetch()}
-          disabled={loadingConversations}
-          data-testid="refresh-conversations"
-        >
-          <RefreshCcw className={`h-4 w-4 mr-2 ${loadingConversations ? 'animate-spin' : ''}`} />
-          Aggiorna
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* Agent Presence Toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Status:</span>
+            <Select
+              value={agentPresence?.status || 'OFFLINE'}
+              onValueChange={(status: 'ONLINE' | 'AWAY' | 'OFFLINE') => 
+                updatePresenceMutation.mutate(status)
+              }
+              disabled={updatePresenceMutation.isPending}
+            >
+              <SelectTrigger 
+                className="w-32 h-8 text-xs"
+                data-testid="agent-presence-select"
+              >
+                <div className="flex items-center gap-1">
+                  {getPresenceIcon(agentPresence?.status)}
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ONLINE" data-testid="status-online">
+                  <div className="flex items-center gap-2">
+                    <Wifi className="h-3 w-3 text-green-600" />
+                    Online
+                  </div>
+                </SelectItem>
+                <SelectItem value="AWAY" data-testid="status-away">
+                  <div className="flex items-center gap-2">
+                    <Moon className="h-3 w-3 text-yellow-500" />
+                    Assente
+                  </div>
+                </SelectItem>
+                <SelectItem value="OFFLINE" data-testid="status-offline">
+                  <div className="flex items-center gap-2">
+                    <WifiOff className="h-3 w-3 text-gray-500" />
+                    Offline
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => refetch()}
+            disabled={loadingConversations}
+            data-testid="refresh-conversations"
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${loadingConversations ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="pending" className="space-y-6">

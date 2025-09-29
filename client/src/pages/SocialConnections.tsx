@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,8 +38,13 @@ export default function SocialConnections() {
   const [location] = useLocation();
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
 
+  // Fetch existing connections
+  const { data: connections = [], isLoading, refetch } = useQuery<SocialConnection[]>({
+    queryKey: ['/api/social/connections'],
+  });
+
   // Check for OAuth success/error in URL params
-  useState(() => {
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
       toast({
@@ -57,12 +62,7 @@ export default function SocialConnections() {
       // Clean URL
       window.history.replaceState({}, '', '/social-connections');
     }
-  });
-
-  // Fetch existing connections
-  const { data: connections = [], isLoading, refetch } = useQuery<SocialConnection[]>({
-    queryKey: ['/api/social/connections'],
-  });
+  }, [toast]);
 
   if (isLoading) {
     return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -16,13 +17,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Target, Lightbulb, Users, DollarSign, Megaphone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Target, Lightbulb, Users, DollarSign, Megaphone, Upload } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function Goals() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { selectedOrganization } = useOrganization();
   const { toast } = useToast();
+  const [uploadedAssets, setUploadedAssets] = useState<string[]>([]);
   
-  const currentOrg = user?.organizations?.[0];
+  const currentOrg = selectedOrganization;
   
   const [goalForm, setGoalForm] = useState({
     salesPipeline: "",
@@ -54,7 +60,7 @@ export default function Goals() {
     data: existingGoals, 
     isLoading: goalsLoading 
   } = useQuery({
-    queryKey: ["/api/organizations", currentOrg?.id, "goals"],
+    queryKey: ["/api/goals"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
   });
@@ -65,8 +71,8 @@ export default function Goals() {
       return await apiRequest("/api/goals", "POST", goalsData);
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "goals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       
       toast({
         title: "Obiettivi salvati!",
@@ -85,6 +91,7 @@ export default function Goals() {
         totalBudget: "",
         budgetAllocations: []
       });
+      setUploadedAssets([]);
     },
     onError: (error: any) => {
       toast({
@@ -94,6 +101,51 @@ export default function Goals() {
       });
     },
   });
+
+  // Handle file upload
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("/api/upload/init", "POST", {
+      filename: "business-goal-document"
+    }) as any;
+    return {
+      method: "PUT" as const,
+      url: response.uploadUrl,
+    };
+  };
+
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    const uploadedFiles = result.successful || [];
+    
+    for (const file of uploadedFiles) {
+      try {
+        // Complete the upload process and save asset
+        const response = await apiRequest("/api/upload/complete", "POST", {
+          objectPath: file.meta?.objectPath || `/objects/uploads/${file.id}`,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          filename: file.name,
+          title: file.name,
+          tags: ["business-goal", "document"],
+          folder: "business-goals"
+        }) as any;
+
+        if (response.success && response.asset) {
+          setUploadedAssets(prev => [...prev, response.asset.id]);
+          toast({
+            title: "File caricato!",
+            description: `Il documento "${file.name}" è stato caricato con successo.`,
+          });
+        }
+      } catch (error) {
+        console.error("Error completing upload:", error);
+        toast({
+          title: "Errore upload",
+          description: `Errore durante il caricamento di "${file.name}".`,
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const addBudgetAllocation = () => {
     setGoalForm(prev => ({
@@ -158,6 +210,7 @@ export default function Goals() {
       objectives: goalForm.objectives,
       totalBudget: Math.round(parseFloat(goalForm.totalBudget) * 100), // Convert to centesimi
       organizationId: currentOrg?.id,
+      assetIds: uploadedAssets.length > 0 ? uploadedAssets : null,
       budgetAllocations: goalForm.budgetAllocations.filter(a => a.amount && parseFloat(a.amount) > 0).map(a => ({
         category: a.category,
         amount: Math.round(parseFloat(a.amount) * 100), // Convert to centesimi
@@ -414,6 +467,32 @@ export default function Goals() {
                   data-testid="geo-area-input"
                   rows={2}
                 />
+              </div>
+
+              {/* File Upload */}
+              <div className="space-y-2">
+                <Label className="flex items-center space-x-2">
+                  <Upload className="w-4 h-4" />
+                  <span>Documenti PDF (opzionale)</span>
+                </Label>
+                <div className="text-sm text-gray-600 mb-2">
+                  Carica documenti PDF di supporto: business plan, piani strategici, analisi di mercato, presentazioni aziendali
+                </div>
+                <ObjectUploader
+                  maxNumberOfFiles={3}
+                  maxFileSize={25 * 1024 * 1024} // 25MB
+                  onGetUploadParameters={handleGetUploadParameters}
+                  onComplete={handleUploadComplete}
+                  buttonClassName="w-full"
+                >
+                  <div className="flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    <span>Carica documenti PDF</span>
+                    {uploadedAssets.length > 0 && (
+                      <Badge variant="secondary">{uploadedAssets.length} documento{uploadedAssets.length > 1 ? 'i' : ''} caricato{uploadedAssets.length > 1 ? 'i' : ''}</Badge>
+                    )}
+                  </div>
+                </ObjectUploader>
               </div>
 
               {/* Budget Allocations */}

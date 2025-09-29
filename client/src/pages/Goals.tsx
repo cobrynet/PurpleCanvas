@@ -82,7 +82,7 @@ export default function Goals() {
       
       toast({
         title: "Obiettivi salvati!",
-        description: `Obiettivi aziendali definiti con successo. ${data.generatedTasks} task iniziali creati automaticamente.`,
+        description: `Obiettivi aziendali definiti con successo. ${(data as any)?.generatedTasks || 0} task iniziali creati automaticamente.`,
       });
       
       // Reset form
@@ -158,7 +158,7 @@ export default function Goals() {
   }
 
   // Show existing goals if they exist
-  if (existingGoals && existingGoals.length > 0) {
+  if (existingGoals && Array.isArray(existingGoals) && existingGoals.length > 0) {
     const goal = existingGoals[0];
     return (
       <MainLayout title="Obiettivi Aziendali" icon={Target}>

@@ -2,6 +2,7 @@ import {
   users,
   organizations,
   memberships,
+  goals,
   campaigns,
   leads,
   opportunities,
@@ -29,6 +30,8 @@ import {
   type InsertAssetLink,
   type Service,
   type OrgServiceOrder,
+  type Goal,
+  type InsertGoal,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull } from "drizzle-orm";
@@ -47,6 +50,10 @@ export interface IStorage {
   createMembership(membership: InsertMembership): Promise<Membership>;
   getUserMembership(userId: string, orgId: string): Promise<Membership | undefined>;
   getOrganizationMembers(orgId: string): Promise<(Membership & { user: User })[]>;
+
+  // Goal operations
+  createGoal(goal: InsertGoal): Promise<Goal>;
+  getGoals(orgId: string): Promise<Goal[]>;
 
   // Campaign operations
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
@@ -185,6 +192,20 @@ export class DatabaseStorage implements IStorage {
       ...row.memberships,
       user: row.users,
     }));
+  }
+
+  // Goal operations
+  async createGoal(goal: InsertGoal): Promise<Goal> {
+    const [created] = await db.insert(goals).values(goal).returning();
+    return created;
+  }
+
+  async getGoals(orgId: string): Promise<Goal[]> {
+    return await db
+      .select()
+      .from(goals)
+      .where(eq(goals.organizationId, orgId))
+      .orderBy(desc(goals.createdAt));
   }
 
   // Campaign operations

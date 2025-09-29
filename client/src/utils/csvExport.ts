@@ -23,9 +23,15 @@ export function generateCSV(data: CSVExportData[], filename: string): void {
         const value = row[header];
         // Handle null/undefined values and escape commas in strings
         if (value === null || value === undefined) return '';
-        const stringValue = String(value);
+        let stringValue = String(value);
+        
+        // CSV Injection Prevention: Prefix potentially dangerous values with single quote
+        if (/^[=+\-@]/.test(stringValue)) {
+          stringValue = "'" + stringValue;
+        }
+        
         // If the value contains commas, quotes, or newlines, wrap in quotes and escape existing quotes
-        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || /^[=+\-@]/.test(String(value))) {
           return `"${stringValue.replace(/"/g, '""')}"`;
         }
         return stringValue;

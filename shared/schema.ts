@@ -50,6 +50,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  settings: jsonb("settings"), // User personal settings (notifications, language, etc.)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -60,6 +61,7 @@ export const organizations = pgTable("organizations", {
   name: varchar("name", { length: 255 }).notNull(),
   plan: varchar("plan", { length: 50 }),
   billingCustomerId: varchar("billing_customer_id"),
+  settings: jsonb("settings"), // Organization settings (branding, domain, workflows, etc.)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -690,3 +692,136 @@ export type InsertSocialConnection = z.infer<typeof insertSocialConnectionSchema
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type AuthRegister = z.infer<typeof authRegisterSchema>;
 export type AuthLogin = z.infer<typeof authLoginSchema>;
+
+// Settings schemas
+export const userSettingsSchema = z.object({
+  // Account preferences
+  language: z.string().default('it'),
+  timezone: z.string().default('Europe/Rome'),
+  
+  // Notification preferences
+  notifications: z.object({
+    email: z.object({
+      campaigns: z.boolean().default(true),
+      leads: z.boolean().default(true),
+      tasks: z.boolean().default(true),
+      opportunities: z.boolean().default(true),
+    }),
+    push: z.object({
+      browser: z.boolean().default(true),
+      mobile: z.boolean().default(false),
+      desktop: z.boolean().default(true),
+    }),
+    sms: z.object({
+      critical: z.boolean().default(false),
+      reminders: z.boolean().default(false),
+    }),
+  }),
+  
+  // Interface preferences
+  interface: z.object({
+    theme: z.enum(['light', 'dark', 'auto']).default('light'),
+    dashboardLayout: z.string().default('default'),
+    sidebarCollapsed: z.boolean().default(false),
+  }),
+});
+
+export const organizationSettingsSchema = z.object({
+  // Organization info
+  organization: z.object({
+    name: z.string().optional(),
+    industry: z.string().optional(),
+    size: z.string().optional(),
+    country: z.string().optional(),
+    description: z.string().optional(),
+  }),
+  
+  // Branding
+  branding: z.object({
+    logoUrl: z.string().optional(),
+    brandColor: z.string().default('#390035'),
+    customDomain: z.string().optional(),
+    subdomain: z.string().optional(),
+    sslEnabled: z.boolean().default(true),
+  }),
+  
+  // Developer settings
+  developer: z.object({
+    apiKeys: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      key: z.string(),
+      environment: z.enum(['development', 'production']),
+      lastUsed: z.date().optional(),
+      createdAt: z.date(),
+    })).default([]),
+    webhooks: z.object({
+      url: z.string().optional(),
+      events: z.array(z.string()).default([]),
+      secret: z.string().optional(),
+    }),
+  }),
+  
+  // Workflow & Automazioni Offline
+  workflows: z.object({
+    automations: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      type: z.enum(['event_based', 'time_based', 'condition_based']),
+      trigger: z.object({
+        type: z.string(),
+        conditions: z.record(z.any()),
+      }),
+      actions: z.array(z.object({
+        type: z.string(),
+        config: z.record(z.any()),
+      })),
+      enabled: z.boolean().default(true),
+      priority: z.enum(['P0', 'P1', 'P2', 'P3']).default('P2'),
+      createdAt: z.date(),
+    })).default([]),
+    
+    // Configurazioni per task automatici
+    taskAutomation: z.object({
+      // Eventi entro 30gg = P1
+      eventDeadlineEscalation: z.object({
+        enabled: z.boolean().default(true),
+        daysBefore: z.number().default(30),
+        targetPriority: z.enum(['P0', 'P1', 'P2', 'P3']).default('P1'),
+      }),
+      
+      // Revisione brand per materiali stampati
+      brandReviewReminder: z.object({
+        enabled: z.boolean().default(true),
+        triggerOnPrintMaterials: z.boolean().default(true),
+        daysBefore: z.number().default(7),
+        assignToRole: z.enum(['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER', 'SALES', 'VIEWER']).default('MARKETER'),
+      }),
+      
+      // Lead follow-up automatico
+      leadFollowUp: z.object({
+        enabled: z.boolean().default(true),
+        firstFollowUpHours: z.number().default(24),
+        subsequentFollowUpDays: z.array(z.number()).default([3, 7, 14]),
+      }),
+      
+      // Reminder scadenze opportunità
+      opportunityReminders: z.object({
+        enabled: z.boolean().default(true),
+        reminderDays: z.array(z.number()).default([7, 3, 1]),
+        escalateAfterDays: z.number().default(7),
+      }),
+    }),
+  }),
+  
+  // User management
+  userManagement: z.object({
+    defaultRole: z.enum(['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER', 'SALES', 'VIEWER']).default('VIEWER'),
+    allowSelfRegistration: z.boolean().default(false),
+    requiredApproval: z.boolean().default(true),
+  }),
+});
+
+// Settings types
+export type UserSettings = z.infer<typeof userSettingsSchema>;
+export type OrganizationSettings = z.infer<typeof organizationSettingsSchema>;

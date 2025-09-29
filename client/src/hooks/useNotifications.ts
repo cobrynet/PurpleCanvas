@@ -27,7 +27,7 @@ export function useSendNotification() {
   
   return useMutation({
     mutationFn: async (data: SendNotificationData) => {
-      const response = await apiRequest('/api/notifications/send', 'POST', data);
+      const response = await apiRequest('POST', '/api/notifications/send', data);
       return response.json();
     },
     onSuccess: () => {
@@ -43,7 +43,7 @@ export function useMarkNotificationAsRead() {
   
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      const response = await apiRequest(`/api/notifications/${notificationId}/read`, 'PATCH');
+      const response = await apiRequest('PATCH', `/api/notifications/${notificationId}/read`);
       return response.json();
     },
     onSuccess: () => {

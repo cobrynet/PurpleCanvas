@@ -1,19 +1,310 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, Star, Package, ArrowRight, Tag } from "lucide-react";
+import { ShoppingCart, Star, Package, ArrowRight, Tag, CreditCard, Clock, User } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
+// Quick buy modal component
+function QuickBuyModal({ service, open, onOpenChange }: { 
+  service: any; 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+}) {
+  const [quantity, setQuantity] = useState(1);
+  const [priority, setPriority] = useState("standard");
+  const [notes, setNotes] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const { toast } = useToast();
+
+  const priorityOptions = {
+    standard: { label: "Standard", extra: 0, description: "Consegna nei tempi normali" },
+    express: { label: "Express", extra: 200, description: "Consegna in metà tempo" },
+    urgent: { label: "Urgente", extra: 500, description: "Consegna prioritaria" }
+  };
+
+  const calculateTotal = () => {
+    const baseTotal = service?.basePrice * quantity || 0;
+    const priorityExtra = priorityOptions[priority as keyof typeof priorityOptions].extra;
+    return baseTotal + priorityExtra;
+  };
+
+  const createMockOrder = async (orderData: any) => {
+    setIsCreatingOrder(true);
+    
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Create mock order record
+      const mockOrder = {
+        id: `order-${Date.now()}`,
+        serviceId: orderData.serviceId,
+        serviceName: orderData.serviceName,
+        quantity: orderData.quantity,
+        priority: orderData.priority,
+        total: orderData.total,
+        notes: orderData.notes,
+        contactName: orderData.contactName,
+        contactEmail: orderData.contactEmail,
+        status: 'REQUESTED',
+        createdAt: new Date().toISOString()
+      };
+
+      // Store in localStorage for demo (simulate database record)
+      const existingOrders = JSON.parse(localStorage.getItem('mockOrders') || '[]');
+      existingOrders.push(mockOrder);
+      localStorage.setItem('mockOrders', JSON.stringify(existingOrders));
+
+      // Success notification
+      toast({
+        title: "Ordine creato con successo! 🎉",
+        description: `Il tuo ordine #${mockOrder.id.slice(-8)} è stato inviato. Riceverai una conferma via email.`,
+      });
+      
+      // Reset form
+      setQuantity(1);
+      setPriority("standard");
+      setNotes("");
+      setContactName("");
+      setContactEmail("");
+      onOpenChange(false);
+      
+    } catch (error) {
+      // Error notification
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante la creazione dell'ordine.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!contactName || !contactEmail) {
+      toast({
+        title: "Campi obbligatori",
+        description: "Inserisci nome e email di contatto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createMockOrder({
+      serviceId: service.id,
+      serviceName: service.name,
+      quantity,
+      priority,
+      total: calculateTotal(),
+      notes,
+      contactName,
+      contactEmail
+    });
+  };
+
+  if (!service) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" />
+            Ordina Servizio
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Service Summary */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg">{service.name}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {service.description}
+                  </p>
+                  <div className="flex items-center gap-4 mt-3 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      <span>5-7 giorni</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span>4.8 (142 recensioni)</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Prezzo base</div>
+                  <div className="text-2xl font-bold text-primary">
+                    €{service.basePrice.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Contact Information */}
+          <div className="space-y-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Informazioni di Contatto
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="contactName">Nome Contatto *</Label>
+                <Input
+                  id="contactName"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Il tuo nome"
+                  required
+                  data-testid="input-contact-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="contactEmail">Email Contatto *</Label>
+                <Input
+                  id="contactEmail"
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="tua@email.com"
+                  required
+                  data-testid="input-contact-email"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Order Configuration */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Configurazione Ordine</h4>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="quantity">Quantità</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  data-testid="input-quantity"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="priority">Priorità</Label>
+                <Select value={priority} onValueChange={setPriority}>
+                  <SelectTrigger data-testid="select-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(priorityOptions).map(([key, option]) => (
+                      <SelectItem key={key} value={key}>
+                        {option.label} {option.extra > 0 && `(+€${option.extra})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Note aggiuntive (opzionale)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Specifica dettagli del progetto, preferenze, scadenze..."
+                rows={3}
+                data-testid="textarea-notes"
+              />
+            </div>
+          </div>
+
+          {/* Order Summary */}
+          <Card className="bg-muted/50">
+            <CardContent className="p-4">
+              <h4 className="font-medium mb-3">Riepilogo Ordine</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Servizio ({quantity}x)</span>
+                  <span>€{(service.basePrice * quantity).toLocaleString()}</span>
+                </div>
+                {priorityOptions[priority as keyof typeof priorityOptions].extra > 0 && (
+                  <div className="flex justify-between">
+                    <span>Priorità {priorityOptions[priority as keyof typeof priorityOptions].label}</span>
+                    <span>€{priorityOptions[priority as keyof typeof priorityOptions].extra}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 font-semibold flex justify-between">
+                  <span>Totale</span>
+                  <span className="text-primary">€{calculateTotal().toLocaleString()}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
+              data-testid="button-cancel-order"
+            >
+              Annulla
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isCreatingOrder}
+              className="flex-1"
+              data-testid="button-confirm-order"
+            >
+              {isCreatingOrder ? (
+                <>
+                  <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                  Creazione...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Conferma Ordine
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Marketplace() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false);
   
   const currentOrg = user?.organizations?.[0];
   const currentMembership = currentOrg?.membership;
@@ -291,10 +582,14 @@ export default function Marketplace() {
                       <Button 
                         size="sm" 
                         className="flex-1 bg-primary hover:bg-primary/90"
+                        onClick={() => {
+                          setSelectedService(service);
+                          setIsQuickBuyOpen(true);
+                        }}
                         data-testid={`service-order-${service.id}`}
                       >
                         <ShoppingCart className="w-4 h-4 mr-1" />
-                        Ordina
+                        Ordina Ora
                       </Button>
                     </div>
                   </div>
@@ -346,6 +641,13 @@ export default function Marketplace() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Quick Buy Modal */}
+        <QuickBuyModal
+          service={selectedService}
+          open={isQuickBuyOpen}
+          onOpenChange={setIsQuickBuyOpen}
+        />
       </div>
     </MainLayout>
   );

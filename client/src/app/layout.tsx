@@ -31,7 +31,7 @@ interface AppLayoutProps {
 
 const sidebarItems = [
   { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/" },
-  { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing/overview" },
+  { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing" },
   { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
   { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag, href: "/marketplace" },

@@ -810,10 +810,10 @@ export default function Marketing() {
     <MainLayout title="Marketing" icon={Megaphone}>
       <div data-testid="marketing-content">
         {/* Marketing Navigation Tabs */}
-        <Tabs defaultValue="post-organici" className="mb-6">
+        <Tabs defaultValue="overview" className="mb-6">
           <TabsList className="grid w-fit grid-cols-3" data-testid="marketing-tabs">
-            <TabsTrigger value="overview" asChild data-testid="tab-overview">
-              <Link href="/marketing/overview">Overview</Link>
+            <TabsTrigger value="overview" data-testid="tab-overview">
+              Overview
             </TabsTrigger>
             <TabsTrigger value="post-organici" data-testid="tab-post-organici">
               Post Organici
@@ -822,6 +822,14 @@ export default function Marketing() {
               Campagne
             </TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="overview">
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Panoramica Marketing - Dashboard completa sarà disponibile prossimamente
+              </p>
+            </div>
+          </TabsContent>
           
           <TabsContent value="post-organici">
             <PostOrganiciSection />

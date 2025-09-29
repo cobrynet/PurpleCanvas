@@ -33,7 +33,7 @@ function Router() {
             <Switch>
               <Route path="/" component={Dashboard} />
               <Route path="/marketing/overview" component={MarketingOverview} />
-              <Route path="/marketing/campaigns" component={Marketing} />
+              <Route path="/marketing" component={Marketing} />
               <Route path="/crm/leads" component={CRM} />
               <Route path="/crm/opportunities" component={CRM} />
               <Route path="/crm/pipeline" component={CRM} />

@@ -578,6 +578,29 @@ export const insertOfflineActivitySchema = createInsertSchema(offlineActivities)
   createdAt: true,
 });
 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Authentication schemas
+export const authRegisterSchema = z.object({
+  email: z.string().email("Formato email non valido"),
+  password: z.string().min(8, "La password deve essere di almeno 8 caratteri"),
+  confirmPassword: z.string(),
+  firstName: z.string().min(1, "Nome è obbligatorio"),
+  lastName: z.string().min(1, "Cognome è obbligatorio"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Le password non corrispondono",
+  path: ["confirmPassword"],
+});
+
+export const authLoginSchema = z.object({
+  email: z.string().email("Formato email non valido"),
+  password: z.string().min(1, "Password è obbligatoria"),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -613,3 +636,6 @@ export type BudgetAllocation = typeof budgetAllocations.$inferSelect;
 export type InsertBudgetAllocation = z.infer<typeof insertBudgetAllocationSchema>;
 export type OfflineActivity = typeof offlineActivities.$inferSelect;
 export type InsertOfflineActivity = z.infer<typeof insertOfflineActivitySchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type AuthRegister = z.infer<typeof authRegisterSchema>;
+export type AuthLogin = z.infer<typeof authLoginSchema>;

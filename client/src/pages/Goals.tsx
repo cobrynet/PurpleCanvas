@@ -25,40 +25,28 @@ export default function Goals() {
   const currentOrg = user?.organizations?.[0];
   
   const [goalForm, setGoalForm] = useState({
-    sector: "",
-    annualObjectives: "",
-    targetClients: "",
-    marketingBudget: "",
-    preferredChannels: [] as string[],
-    additionalNotes: ""
+    salesPipeline: "",
+    fairs: "",
+    digitalChannels: "",
+    adInvestments: "",
+    geoArea: "",
+    periodicity: "" as "ANNUALE" | "SEMESTRALE" | "QUADRIMESTRALE" | "",
+    objectives: "",
+    totalBudget: "",
+    budgetAllocations: [] as { category: "SOCIAL_ADS" | "FIERE" | "COMMERCIALE" | "ALTRO"; amount: string; notes: string }[]
   });
 
-  const availableChannels = [
-    "Social Media (Facebook, Instagram, LinkedIn)",
-    "Google Ads",
-    "Email Marketing",
-    "Content Marketing",
-    "SEO/SEM",
-    "Influencer Marketing",
-    "Events & Webinar",
-    "PR & Media Relations",
-    "Direct Mail",
-    "Partnerships"
+  const periodicityOptions = [
+    { value: "ANNUALE", label: "Annuale" },
+    { value: "SEMESTRALE", label: "Semestrale" },
+    { value: "QUADRIMESTRALE", label: "Quadrimestrale" }
   ];
 
-  const sectors = [
-    "Tecnologia e Software",
-    "E-commerce",
-    "Servizi Professionali",
-    "Manifatturiero",
-    "Retail",
-    "Sanità",
-    "Fintech",
-    "Immobiliare",
-    "Food & Beverage",
-    "Automotive",
-    "Turismo e Hospitality",
-    "Altro"
+  const budgetCategories = [
+    { value: "SOCIAL_ADS", label: "Social Ads" },
+    { value: "FIERE", label: "Fiere" },
+    { value: "COMMERCIALE", label: "Commerciale" },
+    { value: "ALTRO", label: "Altro" }
   ];
 
   // Check existing goals
@@ -87,12 +75,15 @@ export default function Goals() {
       
       // Reset form
       setGoalForm({
-        sector: "",
-        annualObjectives: "",
-        targetClients: "",
-        marketingBudget: "",
-        preferredChannels: [],
-        additionalNotes: ""
+        salesPipeline: "",
+        fairs: "",
+        digitalChannels: "",
+        adInvestments: "",
+        geoArea: "",
+        periodicity: "" as const,
+        objectives: "",
+        totalBudget: "",
+        budgetAllocations: []
       });
     },
     onError: (error: any) => {
@@ -104,31 +95,74 @@ export default function Goals() {
     },
   });
 
-  const handleChannelChange = (channel: string, checked: boolean) => {
+  const addBudgetAllocation = () => {
     setGoalForm(prev => ({
       ...prev,
-      preferredChannels: checked 
-        ? [...prev.preferredChannels, channel]
-        : prev.preferredChannels.filter(c => c !== channel)
+      budgetAllocations: [...prev.budgetAllocations, { category: "ALTRO" as const, amount: "", notes: "" }]
+    }));
+  };
+
+  const updateBudgetAllocation = (index: number, field: string, value: string) => {
+    setGoalForm(prev => ({
+      ...prev,
+      budgetAllocations: prev.budgetAllocations.map((allocation, i) => 
+        i === index ? { ...allocation, [field]: value } : allocation
+      )
+    }));
+  };
+
+  const removeBudgetAllocation = (index: number) => {
+    setGoalForm(prev => ({
+      ...prev,
+      budgetAllocations: prev.budgetAllocations.filter((_, i) => i !== index)
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!goalForm.annualObjectives.trim()) {
+    if (!goalForm.objectives.trim()) {
       toast({
         title: "Campo obbligatorio",
-        description: "Gli obiettivi annuali sono obbligatori.",
+        description: "Gli obiettivi sono obbligatori.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!goalForm.periodicity) {
+      toast({
+        title: "Campo obbligatorio",
+        description: "La periodicità è obbligatoria.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!goalForm.totalBudget || parseFloat(goalForm.totalBudget) <= 0) {
+      toast({
+        title: "Campo obbligatorio",
+        description: "Il budget totale è obbligatorio e deve essere maggiore di 0.",
         variant: "destructive",
       });
       return;
     }
 
     const goalsData = {
-      ...goalForm,
-      marketingBudget: goalForm.marketingBudget ? parseFloat(goalForm.marketingBudget) : null,
-      organizationId: currentOrg?.id
+      salesPipeline: goalForm.salesPipeline || null,
+      fairs: goalForm.fairs || null,
+      digitalChannels: goalForm.digitalChannels || null,
+      adInvestments: goalForm.adInvestments || null,
+      geoArea: goalForm.geoArea || null,
+      periodicity: goalForm.periodicity,
+      objectives: goalForm.objectives,
+      totalBudget: Math.round(parseFloat(goalForm.totalBudget) * 100), // Convert to centesimi
+      organizationId: currentOrg?.id,
+      budgetAllocations: goalForm.budgetAllocations.filter(a => a.amount && parseFloat(a.amount) > 0).map(a => ({
+        category: a.category,
+        amount: Math.round(parseFloat(a.amount) * 100), // Convert to centesimi
+        notes: a.notes || null
+      }))
     };
 
     createGoalsMutation.mutate(goalsData);
@@ -176,46 +210,54 @@ export default function Goals() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold mb-2">Settore</h3>
-                  <p className="text-muted-foreground">{goal.sector || "Non specificato"}</p>
+                  <h3 className="font-semibold mb-2">Periodicità</h3>
+                  <p className="text-muted-foreground">{goal.periodicity}</p>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Budget Marketing</h3>
+                  <h3 className="font-semibold mb-2">Budget Totale</h3>
                   <p className="text-muted-foreground">
-                    {goal.marketingBudget ? `€${goal.marketingBudget.toLocaleString()}` : "Non specificato"}
+                    {goal.totalBudget ? `€${(goal.totalBudget / 100).toLocaleString()}` : "Non specificato"}
                   </p>
                 </div>
               </div>
               
               <div>
-                <h3 className="font-semibold mb-2">Obiettivi Annuali</h3>
-                <p className="text-muted-foreground whitespace-pre-wrap">{goal.annualObjectives}</p>
+                <h3 className="font-semibold mb-2">Obiettivi</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap">{goal.objectives}</p>
               </div>
               
-              {goal.targetClients && (
+              {goal.salesPipeline && (
                 <div>
-                  <h3 className="font-semibold mb-2">Target Clienti</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.targetClients}</p>
+                  <h3 className="font-semibold mb-2">Pipeline Vendite</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.salesPipeline}</p>
                 </div>
               )}
               
-              {goal.preferredChannels && goal.preferredChannels.length > 0 && (
+              {goal.fairs && (
                 <div>
-                  <h3 className="font-semibold mb-2">Canali Preferiti</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {goal.preferredChannels.map((channel: string) => (
-                      <span key={channel} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                        {channel}
-                      </span>
-                    ))}
-                  </div>
+                  <h3 className="font-semibold mb-2">Fiere</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.fairs}</p>
                 </div>
               )}
               
-              {goal.additionalNotes && (
+              {goal.digitalChannels && (
                 <div>
-                  <h3 className="font-semibold mb-2">Note Aggiuntive</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.additionalNotes}</p>
+                  <h3 className="font-semibold mb-2">Canali Digitali</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.digitalChannels}</p>
+                </div>
+              )}
+              
+              {goal.adInvestments && (
+                <div>
+                  <h3 className="font-semibold mb-2">Investimenti Pubblicitari</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.adInvestments}</p>
+                </div>
+              )}
+              
+              {goal.geoArea && (
+                <div>
+                  <h3 className="font-semibold mb-2">Area Geografica</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{goal.geoArea}</p>
                 </div>
               )}
               
@@ -247,111 +289,197 @@ export default function Goals() {
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Settore */}
+              {/* Obiettivi - Campo obbligatorio */}
               <div className="space-y-2">
-                <Label htmlFor="sector" className="flex items-center space-x-2">
-                  <Lightbulb className="w-4 h-4" />
-                  <span>Settore di attività</span>
+                <Label htmlFor="objectives" className="flex items-center space-x-2">
+                  <Target className="w-4 h-4" />
+                  <span>Obiettivi aziendali *</span>
                 </Label>
-                <Select value={goalForm.sector} onValueChange={(value) => setGoalForm(prev => ({ ...prev, sector: value }))}>
-                  <SelectTrigger data-testid="sector-select">
-                    <SelectValue placeholder="Seleziona il tuo settore" />
+                <Textarea
+                  id="objectives"
+                  placeholder="Descrivi i principali obiettivi che vuoi raggiungere (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
+                  value={goalForm.objectives}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, objectives: e.target.value }))}
+                  data-testid="objectives-input"
+                  rows={4}
+                  required
+                />
+              </div>
+
+              {/* Periodicità - Campo obbligatorio */}
+              <div className="space-y-2">
+                <Label htmlFor="periodicity" className="flex items-center space-x-2">
+                  <Target className="w-4 h-4" />
+                  <span>Periodicità *</span>
+                </Label>
+                <Select value={goalForm.periodicity} onValueChange={(value) => setGoalForm(prev => ({ ...prev, periodicity: value as any }))}>
+                  <SelectTrigger data-testid="periodicity-select">
+                    <SelectValue placeholder="Seleziona la periodicità" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sectors.map(sector => (
-                      <SelectItem key={sector} value={sector}>
-                        {sector}
+                    {periodicityOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Obiettivi Annuali */}
+              {/* Budget Totale - Campo obbligatorio */}
               <div className="space-y-2">
-                <Label htmlFor="annual-objectives" className="flex items-center space-x-2">
-                  <Target className="w-4 h-4" />
-                  <span>Obiettivi annuali *</span>
+                <Label htmlFor="total-budget" className="flex items-center space-x-2">
+                  <DollarSign className="w-4 h-4" />
+                  <span>Budget totale (€) *</span>
                 </Label>
-                <Textarea
-                  id="annual-objectives"
-                  placeholder="Descrivi i principali obiettivi che vuoi raggiungere quest'anno (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
-                  value={goalForm.annualObjectives}
-                  onChange={(e) => setGoalForm(prev => ({ ...prev, annualObjectives: e.target.value }))}
-                  data-testid="annual-objectives-input"
-                  rows={4}
+                <Input
+                  id="total-budget"
+                  type="number"
+                  placeholder="50000"
+                  value={goalForm.totalBudget}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, totalBudget: e.target.value }))}
+                  data-testid="total-budget-input"
+                  min="0"
+                  step="100"
                   required
                 />
               </div>
 
-              {/* Target Clienti */}
+              {/* Pipeline Vendite */}
               <div className="space-y-2">
-                <Label htmlFor="target-clients" className="flex items-center space-x-2">
+                <Label htmlFor="sales-pipeline" className="flex items-center space-x-2">
                   <Users className="w-4 h-4" />
-                  <span>Target clienti</span>
+                  <span>Pipeline vendite</span>
                 </Label>
                 <Textarea
-                  id="target-clients"
-                  placeholder="Descrivi il tuo cliente ideale (dimensione azienda, settore, budget, geografia, pain points...)"
-                  value={goalForm.targetClients}
-                  onChange={(e) => setGoalForm(prev => ({ ...prev, targetClients: e.target.value }))}
-                  data-testid="target-clients-input"
+                  id="sales-pipeline"
+                  placeholder="Descrivi la tua pipeline vendite, processi di acquisizione clienti, cicli di vendita..."
+                  value={goalForm.salesPipeline}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, salesPipeline: e.target.value }))}
+                  data-testid="sales-pipeline-input"
                   rows={3}
                 />
               </div>
 
-              {/* Budget Marketing */}
+              {/* Fiere */}
               <div className="space-y-2">
-                <Label htmlFor="marketing-budget" className="flex items-center space-x-2">
-                  <DollarSign className="w-4 h-4" />
-                  <span>Budget marketing annuale (€)</span>
-                </Label>
-                <Input
-                  id="marketing-budget"
-                  type="number"
-                  placeholder="50000"
-                  value={goalForm.marketingBudget}
-                  onChange={(e) => setGoalForm(prev => ({ ...prev, marketingBudget: e.target.value }))}
-                  data-testid="marketing-budget-input"
-                  min="0"
-                  step="100"
-                />
-              </div>
-
-              {/* Canali Preferiti */}
-              <div className="space-y-4">
-                <Label className="flex items-center space-x-2">
+                <Label htmlFor="fairs" className="flex items-center space-x-2">
                   <Megaphone className="w-4 h-4" />
-                  <span>Canali marketing preferiti</span>
+                  <span>Fiere e eventi</span>
                 </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {availableChannels.map(channel => (
-                    <div key={channel} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`channel-${channel}`}
-                        checked={goalForm.preferredChannels.includes(channel)}
-                        onCheckedChange={(checked) => handleChannelChange(channel, checked as boolean)}
-                        data-testid={`channel-${channel.toLowerCase().replace(/\s+/g, '-')}`}
-                      />
-                      <label htmlFor={`channel-${channel}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        {channel}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Note Aggiuntive */}
-              <div className="space-y-2">
-                <Label htmlFor="additional-notes">Note aggiuntive</Label>
                 <Textarea
-                  id="additional-notes"
-                  placeholder="Aggiungi qualsiasi informazione utile per personalizzare i task iniziali..."
-                  value={goalForm.additionalNotes}
-                  onChange={(e) => setGoalForm(prev => ({ ...prev, additionalNotes: e.target.value }))}
-                  data-testid="additional-notes-input"
+                  id="fairs"
+                  placeholder="Descrivi le fiere, eventi, conferenze a cui partecipi o vorresti partecipare..."
+                  value={goalForm.fairs}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, fairs: e.target.value }))}
+                  data-testid="fairs-input"
                   rows={3}
                 />
+              </div>
+
+              {/* Canali Digitali */}
+              <div className="space-y-2">
+                <Label htmlFor="digital-channels">Canali digitali</Label>
+                <Textarea
+                  id="digital-channels"
+                  placeholder="Descrivi i canali digitali che utilizzi o vorresti utilizzare (social media, email, sito web, blog...)"  
+                  value={goalForm.digitalChannels}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, digitalChannels: e.target.value }))}
+                  data-testid="digital-channels-input"
+                  rows={3}
+                />
+              </div>
+
+              {/* Investimenti Pubblicitari */}
+              <div className="space-y-2">
+                <Label htmlFor="ad-investments">Investimenti pubblicitari</Label>
+                <Textarea
+                  id="ad-investments"
+                  placeholder="Descrivi gli investimenti pubblicitari attuali o pianificati (Google Ads, Facebook Ads, LinkedIn...)"  
+                  value={goalForm.adInvestments}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, adInvestments: e.target.value }))}
+                  data-testid="ad-investments-input"
+                  rows={3}
+                />
+              </div>
+
+              {/* Area Geografica */}
+              <div className="space-y-2">
+                <Label htmlFor="geo-area">Area geografica</Label>
+                <Textarea
+                  id="geo-area"
+                  placeholder="Descrivi le aree geografiche target per il tuo business (locale, nazionale, internazionale...)"  
+                  value={goalForm.geoArea}
+                  onChange={(e) => setGoalForm(prev => ({ ...prev, geoArea: e.target.value }))}
+                  data-testid="geo-area-input"
+                  rows={2}
+                />
+              </div>
+
+              {/* Budget Allocations */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center space-x-2">
+                    <DollarSign className="w-4 h-4" />
+                    <span>Allocazioni budget (opzionale)</span>
+                  </Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addBudgetAllocation} data-testid="add-budget-allocation">
+                    Aggiungi allocazione
+                  </Button>
+                </div>
+                {goalForm.budgetAllocations.map((allocation, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg">
+                    <div>
+                      <Label htmlFor={`allocation-category-${index}`}>Categoria</Label>
+                      <Select value={allocation.category} onValueChange={(value) => updateBudgetAllocation(index, 'category', value)}>
+                        <SelectTrigger data-testid={`allocation-category-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {budgetCategories.map(cat => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor={`allocation-amount-${index}`}>Importo (€)</Label>
+                      <Input
+                        id={`allocation-amount-${index}`}
+                        type="number"
+                        placeholder="5000"
+                        value={allocation.amount}
+                        onChange={(e) => updateBudgetAllocation(index, 'amount', e.target.value)}
+                        data-testid={`allocation-amount-${index}`}
+                        min="0"
+                        step="100"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`allocation-notes-${index}`}>Note</Label>
+                      <Input
+                        id={`allocation-notes-${index}`}
+                        placeholder="Note..."
+                        value={allocation.notes}
+                        onChange={(e) => updateBudgetAllocation(index, 'notes', e.target.value)}
+                        data-testid={`allocation-notes-${index}`}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button 
+                        type="button" 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={() => removeBudgetAllocation(index)}
+                        data-testid={`remove-allocation-${index}`}
+                      >
+                        Rimuovi
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex justify-end">

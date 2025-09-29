@@ -14,6 +14,7 @@ import {
   assetLinks,
   services,
   orgServiceOrders,
+  notifications,
   type User,
   type UpsertUser,
   type Organization,
@@ -41,6 +42,8 @@ import {
   type InsertGoalAttachment,
   type BudgetAllocation,
   type InsertBudgetAllocation,
+  type Notification,
+  type InsertNotification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull } from "drizzle-orm";
@@ -113,6 +116,13 @@ export interface IStorage {
   // Order operations
   createOrder(order: Omit<OrgServiceOrder, 'id' | 'createdAt'>): Promise<OrgServiceOrder>;
   getOrders(orgId: string): Promise<OrgServiceOrder[]>;
+
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotifications(userId: string, orgId: string): Promise<Notification[]>;
+  getUnreadNotificationsCount(userId: string, orgId: string): Promise<number>;
+  markNotificationAsRead(id: string, userId: string, orgId: string): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: string, orgId: string): Promise<void>;
 
   // Dashboard stats
   getDashboardStats(orgId: string): Promise<{
@@ -629,6 +639,59 @@ export class DatabaseStorage implements IStorage {
         dueDate: this.formatDueDate(task.dueAt!),
         priority: task.priority || 'P2',
       }));
+  }
+
+  // Notification operations
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async getNotifications(userId: string, orgId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.organizationId, orgId)
+      ))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationsCount(userId: string, orgId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.organizationId, orgId),
+        eq(notifications.isRead, false)
+      ));
+    return result.count;
+  }
+
+  async markNotificationAsRead(id: string, userId: string, orgId: string): Promise<Notification | undefined> {
+    const [updated] = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(notifications.id, id),
+        eq(notifications.userId, userId),
+        eq(notifications.organizationId, orgId)
+      ))
+      .returning();
+    return updated;
+  }
+
+  async markAllNotificationsAsRead(userId: string, orgId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.organizationId, orgId),
+        eq(notifications.isRead, false)
+      ));
   }
 
   private formatRelativeTime(date: Date): string {

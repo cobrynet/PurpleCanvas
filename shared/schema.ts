@@ -29,6 +29,7 @@ export const orderStatusEnum = pgEnum('order_status', ['REQUESTED', 'CONFIRMED',
 export const periodicityEnum = pgEnum('periodicity', ['ANNUALE', 'SEMESTRALE', 'QUADRIMESTRALE']);
 export const budgetCategoryEnum = pgEnum('budget_category', ['SOCIAL_ADS', 'FIERE', 'COMMERCIALE', 'ALTRO']);
 export const offlineActivityTypeEnum = pgEnum('offline_activity_type', ['FIERA', 'EVENTO', 'STAMPA', 'PR', 'SPONSORSHIP', 'DIRECT_MAIL', 'RADIO', 'TV', 'OUTDOOR', 'ALTRO']);
+export const notificationTypeEnum = pgEnum('notification_type', ['INFO', 'SUCCESS', 'WARNING', 'ERROR']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -412,9 +413,25 @@ export const agentPresence = pgTable("agent_presence", {
   currentChatCount: integer("current_chat_count").default(0),
 });
 
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: notificationTypeEnum("type").default('INFO'),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_notifications_user_unread").on(table.userId, table.isRead),
+  index("idx_notifications_organization").on(table.organizationId)
+]);
+
 // Relationships
 export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(memberships),
+  notifications: many(notifications),
 }));
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
@@ -426,6 +443,7 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   audiences: many(audiences),
   orders: many(orgServiceOrders),
   businessGoals: many(businessGoals),
+  notifications: many(notifications),
 }));
 
 export const businessGoalsRelations = relations(businessGoals, ({ one, many }) => ({
@@ -466,6 +484,17 @@ export const membershipsRelations = relations(memberships, ({ one }) => ({
   }),
   user: one(users, {
     fields: [memberships.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [notifications.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [notifications.userId],
     references: [users.id],
   }),
 }));
@@ -584,6 +613,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Authentication schemas
 export const authRegisterSchema = z.object({
   email: z.string().email("Formato email non valido"),
@@ -636,6 +670,8 @@ export type BudgetAllocation = typeof budgetAllocations.$inferSelect;
 export type InsertBudgetAllocation = z.infer<typeof insertBudgetAllocationSchema>;
 export type OfflineActivity = typeof offlineActivities.$inferSelect;
 export type InsertOfflineActivity = z.infer<typeof insertOfflineActivitySchema>;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type AuthRegister = z.infer<typeof authRegisterSchema>;
 export type AuthLogin = z.infer<typeof authLoginSchema>;

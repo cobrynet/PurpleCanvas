@@ -757,12 +757,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'File size exceeds maximum limit of 50MB' });
       }
       
+      // Basic filename sanitization
+      const sanitizedFilename = filename ? filename.replace(/[^a-zA-Z0-9._-]/g, '_') : 'file';
+      
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
       
-      // Generate org-scoped object path
-      const orgScopedFilename = `orgs/${orgId}/${filename || 'file'}`;
-      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(orgScopedFilename);
+      // Pass orgId and filename to create org-scoped path
+      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(sanitizedFilename, orgId);
       
       // Prepare headers for Uppy/S3 upload
       const headers: Record<string, string> = {};

@@ -132,7 +132,7 @@ export default function OfflineActivities() {
   // Handle file upload
   const handleGetUploadParameters = async (file: any) => {
     const response = await apiRequest("/api/upload/init", "POST", {
-      filename: `offline-activities/${file.name}`,
+      filename: `offline-activities_${file.name}`,
       fileType: file.type,
       fileSize: file.size
     }) as any;

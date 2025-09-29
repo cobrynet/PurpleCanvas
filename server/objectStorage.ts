@@ -130,8 +130,8 @@ export class ObjectStorageService {
     }
   }
 
-  // Gets the upload URL for an object entity.
-  async getObjectEntityUploadURL(filename?: string): Promise<{ uploadUrl: string; publicUrl: string; objectPath: string }> {
+  // Gets the upload URL for an object entity with organization scoping.
+  async getObjectEntityUploadURL(filename?: string, orgId?: string): Promise<{ uploadUrl: string; publicUrl: string; objectPath: string }> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -140,10 +140,16 @@ export class ObjectStorageService {
       );
     }
 
+    if (!orgId) {
+      throw new Error("Organization ID is required for upload URL generation");
+    }
+
     const objectId = randomUUID();
     const fileExtension = filename ? filename.split('.').pop() : 'bin';
     const finalFilename = `${objectId}.${fileExtension}`;
-    const fullPath = `${privateObjectDir}/uploads/${finalFilename}`;
+    
+    // Create org-scoped path: /private/<orgId>/uploads/<filename>
+    const fullPath = `${privateObjectDir}/${orgId}/uploads/${finalFilename}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
@@ -157,7 +163,7 @@ export class ObjectStorageService {
 
     // Generate public URL
     const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectName}`;
-    const objectPath = `/objects/uploads/${finalFilename}`;
+    const objectPath = `/objects/${orgId}/uploads/${finalFilename}`;
 
     return { uploadUrl, publicUrl, objectPath };
   }
@@ -169,16 +175,21 @@ export class ObjectStorageService {
     }
 
     const parts = objectPath.slice(1).split("/");
-    if (parts.length < 2) {
+    if (parts.length < 3) { // Now expecting /objects/<orgId>/<entityPath>
       throw new ObjectNotFoundError();
     }
 
-    const entityId = parts.slice(1).join("/");
+    // Extract orgId and entityPath from /objects/<orgId>/uploads/<filename>
+    const orgId = parts[1];
+    const entityId = parts.slice(2).join("/");
+    
     let entityDir = this.getPrivateObjectDir();
     if (!entityDir.endsWith("/")) {
       entityDir = `${entityDir}/`;
     }
-    const objectEntityPath = `${entityDir}${entityId}`;
+    
+    // Build org-scoped path: <privateDir>/<orgId>/<entityPath>
+    const objectEntityPath = `${entityDir}${orgId}/${entityId}`;
     const { bucketName, objectName } = parseObjectPath(objectEntityPath);
     const bucket = objectStorageClient.bucket(bucketName);
     const objectFile = bucket.file(objectName);

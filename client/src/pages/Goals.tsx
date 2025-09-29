@@ -105,7 +105,7 @@ export default function Goals() {
   // Handle file upload
   const handleGetUploadParameters = async (file: any) => {
     const response = await apiRequest("/api/upload/init", "POST", {
-      filename: `business-goals/${file.name}`,
+      filename: `business-goals_${file.name}`,
       fileType: file.type,
       fileSize: file.size
     }) as any;

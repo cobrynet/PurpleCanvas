@@ -11,12 +11,134 @@ import {
   insertCampaignSchema,
   insertLeadSchema,
   insertOpportunitySchema,
-  insertMarketingTaskSchema 
+  insertMarketingTaskSchema,\n  insertGoalSchema 
 } from "@shared/schema";
 import { assets } from "@shared/schema";
 import { createSocialPost, getSocialPosts } from "../app/api/social/posts/route";
 import { scheduleSocialPost, unscheduleSocialPost } from "../app/api/social/posts/[id]/schedule/route";
 import { publishSocialPost, getPublishStatus } from "../app/api/social/posts/[id]/publish/route";
+
+// Mock AI function to generate initial tasks based on goals
+async function generateInitialTasks(goalData: any, userId: string): Promise<any[]> {
+  const tasks = [];
+  const orgId = goalData.organizationId;
+  
+  // Base tasks always generated
+  const baseTasks = [
+    {
+      title: "Definisci Buyer Personas dettagliate",
+      type: "STRATEGY",
+      subtype: "RESEARCH",
+      priority: "P1" as const,
+      dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    },
+    {
+      title: "Analisi competitiva del settore",
+      type: "STRATEGY", 
+      subtype: "RESEARCH",
+      priority: "P2" as const,
+      dueAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+    }
+  ];
+  
+  // Sector-specific tasks
+  if (goalData.sector) {
+    if (goalData.sector.includes("Tecnologia") || goalData.sector.includes("Software")) {
+      baseTasks.push({
+        title: "Ottimizza SEO per keyword tecniche del settore",
+        type: "CONTENT",
+        subtype: "SEO",
+        priority: "P2" as const,
+        dueAt: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
+      });
+    }
+    
+    if (goalData.sector.includes("E-commerce")) {
+      baseTasks.push({
+        title: "Configura Google Shopping e Meta Catalog",
+        type: "ADV",
+        subtype: "SETUP",
+        priority: "P1" as const,
+        dueAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      });
+    }
+  }
+  
+  // Channel-specific tasks
+  if (goalData.preferredChannels?.length > 0) {
+    if (goalData.preferredChannels.some((ch: string) => ch.includes("Social Media"))) {
+      baseTasks.push({
+        title: "Crea piano editoriale Instagram/Facebook",
+        type: "CONTENT",
+        subtype: "PLANNING",
+        priority: "P1" as const,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+    }
+    
+    if (goalData.preferredChannels.some((ch: string) => ch.includes("Email Marketing"))) {
+      baseTasks.push({
+        title: "Imposta automazioni email per nurturing",
+        type: "EMAIL",
+        subtype: "AUTOMATION",
+        priority: "P2" as const,
+        dueAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      });
+    }
+    
+    if (goalData.preferredChannels.some((ch: string) => ch.includes("Google Ads"))) {
+      baseTasks.push({
+        title: "Configura campagne Google Ads iniziali",
+        type: "ADV",
+        subtype: "PPC",
+        priority: "P1" as const,
+        dueAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      });
+    }
+  }
+  
+  // Budget-based tasks
+  if (goalData.marketingBudget) {
+    if (goalData.marketingBudget >= 50000) {
+      baseTasks.push({
+        title: "Pianifica strategia multi-canale integrata",
+        type: "STRATEGY",
+        subtype: "PLANNING",
+        priority: "P1" as const,
+        dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+    } else if (goalData.marketingBudget >= 10000) {
+      baseTasks.push({
+        title: "Ottimizza ROI su 2-3 canali principali",
+        type: "STRATEGY",
+        subtype: "OPTIMIZATION",
+        priority: "P1" as const,
+        dueAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      });
+    }
+  }
+  
+  // Create tasks in database
+  for (const taskData of baseTasks) {
+    try {
+      const task = await storage.createMarketingTask({
+        organizationId: orgId,
+        title: taskData.title,
+        type: taskData.type,
+        subtype: taskData.subtype,
+        assigneeId: userId,
+        status: "BACKLOG",
+        priority: taskData.priority,
+        dueAt: taskData.dueAt,
+      });
+      tasks.push(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+    }
+  }
+  
+  return tasks;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -102,6 +224,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching organization:", error);
       res.status(500).json({ message: "Failed to fetch organization" });
+    }
+  });
+
+  // Goals routes
+  app.post('/api/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const goalData = insertGoalSchema.parse(req.body);
+      
+      // Verify user has access to the organization
+      const membership = await storage.getUserMembership(userId, goalData.organizationId);
+      if (!membership) {
+        return res.status(403).json({ message: "No access to this organization" });
+      }
+      
+      // Create the goal
+      const goal = await storage.createGoal(goalData);
+      
+      // Generate initial tasks based on goals (mock AI)
+      const generatedTasks = await generateInitialTasks(goalData, userId);
+      
+      res.json({ goal, generatedTasks: generatedTasks.length });
+    } catch (error) {
+      console.error("Error creating goals:", error);
+      res.status(500).json({ message: "Failed to create goals" });
+    }
+  });
+
+  app.get('/api/organizations/:orgId/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { orgId } = req.params;
+      
+      // Verify user has access to the organization
+      const membership = await storage.getUserMembership(userId, orgId);
+      if (!membership) {
+        return res.status(403).json({ message: "No access to this organization" });
+      }
+      
+      const goals = await storage.getGoals(orgId);
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching goals:", error);
+      res.status(500).json({ message: "Failed to fetch goals" });
     }
   });
 

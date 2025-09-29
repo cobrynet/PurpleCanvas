@@ -71,6 +71,7 @@ export interface IStorage {
 
   // Asset operations
   getAssets(orgId: string): Promise<Asset[]>;
+  getAssetByObjectPath(objectPath: string): Promise<Asset | undefined>;
 
   // Service operations
   getServices(): Promise<Service[]>;
@@ -309,6 +310,14 @@ export class DatabaseStorage implements IStorage {
       .from(assets)
       .where(eq(assets.organizationId, orgId))
       .orderBy(desc(assets.createdAt));
+  }
+
+  async getAssetByObjectPath(objectPath: string): Promise<Asset | undefined> {
+    const [asset] = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.url, objectPath));
+    return asset;
   }
 
   // Service operations

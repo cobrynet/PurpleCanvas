@@ -344,13 +344,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
       
+      const objectPath = req.path; // This includes "/objects/" prefix
+      
+      // Find the asset by object path to check authorization
+      const asset = await storage.getAssetByObjectPath(objectPath);
+      if (!asset) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      
+      // Verify user has access to the asset's organization
+      const userOrgs = await storage.getUserOrganizations(userId);
+      const hasAccess = userOrgs.some(org => org.id === asset.organizationId);
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied to this asset" });
+      }
+      
       const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
       
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      
-      // For now, allow access to all uploaded assets for authenticated users
-      // In a more complex system, you might check asset ownership/org membership
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error serving private object:", error);

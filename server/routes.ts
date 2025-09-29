@@ -208,6 +208,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Marketing ADV Campaigns - Mock API
+  app.get('/api/marketing/campaigns', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get user's first organization for demo purposes
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.length) {
+        return res.status(403).json({ message: "No organization access" });
+      }
+      
+      const orgId = userOrgs[0].id;
+      const membership = userOrgs[0].membership;
+      
+      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Filter campaigns by type ADV or MIXED
+      const allCampaigns = await storage.getCampaigns(orgId);
+      const advCampaigns = allCampaigns.filter(c => c.type === 'ADV' || c.type === 'MIXED');
+      
+      res.json(advCampaigns);
+    } catch (error) {
+      console.error("Error fetching ADV campaigns:", error);
+      res.status(500).json({ message: "Failed to fetch ADV campaigns" });
+    }
+  });
+
+  app.post('/api/marketing/campaigns', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.length) {
+        return res.status(403).json({ message: "No organization access" });
+      }
+      
+      const orgId = userOrgs[0].id;
+      const membership = userOrgs[0].membership;
+      
+      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Ensure it's an ADV campaign
+      const campaignData = insertCampaignSchema.parse({
+        ...req.body,
+        organizationId: orgId,
+        type: req.body.type || 'ADV', // Default to ADV
+      });
+      
+      const campaign = await storage.createCampaign(campaignData);
+      
+      // Create a linked marketing task if requested
+      if (req.body.createTask) {
+        const taskData = {
+          organizationId: orgId,
+          campaignId: campaign.id,
+          title: `Gestione Campagna ADV: ${campaign.name}`,
+          type: 'campaign_management',
+          subtype: 'adv_setup',
+          assigneeId: userId,
+          status: 'BACKLOG',
+          priority: campaign.priority || 'P2',
+          dueAt: campaign.startAt ? new Date(new Date(campaign.startAt).getTime() - 7 * 24 * 60 * 60 * 1000) : null, // 7 days before start
+        };
+        
+        await storage.createMarketingTask(taskData);
+      }
+      
+      res.json(campaign);
+    } catch (error) {
+      console.error("Error creating ADV campaign:", error);
+      res.status(500).json({ message: "Failed to create ADV campaign" });
+    }
+  });
+
+  app.patch('/api/marketing/campaigns/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const campaignId = req.params.id;
+      
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.length) {
+        return res.status(403).json({ message: "No organization access" });
+      }
+      
+      const orgId = userOrgs[0].id;
+      const membership = userOrgs[0].membership;
+      
+      if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Validate campaign exists and belongs to organization
+      const existingCampaign = await storage.getCampaign(campaignId, orgId);
+      if (!existingCampaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      const updates = req.body;
+      const updatedCampaign = await storage.updateCampaign(campaignId, orgId, updates);
+      
+      res.json(updatedCampaign);
+    } catch (error) {
+      console.error("Error updating ADV campaign:", error);
+      res.status(500).json({ message: "Failed to update ADV campaign" });
+    }
+  });
+
   // Lead routes
   app.post('/api/organizations/:orgId/leads', isAuthenticated, async (req: any, res) => {
     try {

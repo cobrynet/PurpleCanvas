@@ -613,6 +613,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
+export const insertSocialConnectionSchema = createInsertSchema(socialConnections).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
   createdAt: true,
@@ -672,6 +677,8 @@ export type OfflineActivity = typeof offlineActivities.$inferSelect;
 export type InsertOfflineActivity = z.infer<typeof insertOfflineActivitySchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type SocialConnection = typeof socialConnections.$inferSelect;
+export type InsertSocialConnection = z.infer<typeof insertSocialConnectionSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type AuthRegister = z.infer<typeof authRegisterSchema>;
 export type AuthLogin = z.infer<typeof authLoginSchema>;

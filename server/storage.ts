@@ -14,6 +14,7 @@ import {
   assetLinks,
   services,
   orgServiceOrders,
+  socialConnections,
   notifications,
   type User,
   type UpsertUser,
@@ -36,6 +37,8 @@ import {
   type InsertAssetLink,
   type Service,
   type OrgServiceOrder,
+  type SocialConnection,
+  type InsertSocialConnection,
   type BusinessGoal,
   type InsertBusinessGoal,
   type GoalAttachment,
@@ -117,6 +120,13 @@ export interface IStorage {
   createOrder(order: Omit<OrgServiceOrder, 'id' | 'createdAt'>): Promise<OrgServiceOrder>;
   getOrders(orgId: string): Promise<OrgServiceOrder[]>;
   updateOrderPaymentStatus(orderId: string, stripePaymentIntentId: string, status: 'CONFIRMED' | 'REQUESTED' | 'IN_PROGRESS' | 'DELIVERED' | 'CLOSED'): Promise<OrgServiceOrder | undefined>;
+
+  // Social Connection operations
+  createSocialConnection(connection: InsertSocialConnection): Promise<SocialConnection>;
+  getSocialConnections(orgId: string): Promise<SocialConnection[]>;
+  getSocialConnection(id: string, orgId: string): Promise<SocialConnection | undefined>;
+  updateSocialConnection(id: string, orgId: string, updates: Partial<SocialConnection>): Promise<SocialConnection | undefined>;
+  deleteSocialConnection(id: string, orgId: string): Promise<boolean>;
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -491,6 +501,44 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orgServiceOrders.id, orderId))
       .returning();
     return updated;
+  }
+
+  // Social Connection operations
+  async createSocialConnection(connection: InsertSocialConnection): Promise<SocialConnection> {
+    const [created] = await db.insert(socialConnections).values(connection).returning();
+    return created;
+  }
+
+  async getSocialConnections(orgId: string): Promise<SocialConnection[]> {
+    return await db
+      .select()
+      .from(socialConnections)
+      .where(eq(socialConnections.organizationId, orgId))
+      .orderBy(desc(socialConnections.createdAt));
+  }
+
+  async getSocialConnection(id: string, orgId: string): Promise<SocialConnection | undefined> {
+    const [connection] = await db
+      .select()
+      .from(socialConnections)
+      .where(and(eq(socialConnections.id, id), eq(socialConnections.organizationId, orgId)));
+    return connection;
+  }
+
+  async updateSocialConnection(id: string, orgId: string, updates: Partial<SocialConnection>): Promise<SocialConnection | undefined> {
+    const [updated] = await db
+      .update(socialConnections)
+      .set(updates)
+      .where(and(eq(socialConnections.id, id), eq(socialConnections.organizationId, orgId)))
+      .returning();
+    return updated;
+  }
+
+  async deleteSocialConnection(id: string, orgId: string): Promise<boolean> {
+    const result = await db
+      .delete(socialConnections)
+      .where(and(eq(socialConnections.id, id), eq(socialConnections.organizationId, orgId)));
+    return result.rowCount > 0;
   }
 
   // Dashboard stats

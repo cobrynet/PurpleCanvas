@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { db } from '../../server/db';
-import { socialPosts, insertSocialPostSchema } from '../../shared/schema';
-import type { InsertSocialPost, SocialPost } from '../../shared/schema';
+import { db } from '../../../../server/db';
+import { socialPosts, insertSocialPostSchema } from '../../../../shared/schema';
+import type { InsertSocialPost, SocialPost } from '../../../../shared/schema';
 
 // Mock data for development
 const mockSocialConnections = [

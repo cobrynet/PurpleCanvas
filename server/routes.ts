@@ -14,6 +14,9 @@ import {
   insertMarketingTaskSchema 
 } from "@shared/schema";
 import { assets } from "@shared/schema";
+import { createSocialPost, getSocialPosts } from "../app/api/social/posts/route";
+import { scheduleSocialPost, unscheduleSocialPost } from "../app/api/social/posts/[id]/schedule/route";
+import { publishSocialPost, getPublishStatus } from "../app/api/social/posts/[id]/publish/route";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -396,6 +399,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to complete upload' });
     }
   });
+
+  // Social Posts routes
+  app.post('/api/social/posts', isAuthenticated, createSocialPost);
+  app.get('/api/social/posts', isAuthenticated, getSocialPosts);
+  app.patch('/api/social/posts/:id/schedule', isAuthenticated, scheduleSocialPost);
+  app.delete('/api/social/posts/:id/schedule', isAuthenticated, unscheduleSocialPost);
+  app.post('/api/social/posts/:id/publish', isAuthenticated, publishSocialPost);
+  app.get('/api/social/posts/:id/publish', isAuthenticated, getPublishStatus);
 
   // Marketplace routes
   app.get('/api/services', isAuthenticated, async (req, res) => {

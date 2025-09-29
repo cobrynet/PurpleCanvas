@@ -110,6 +110,8 @@ export const marketingTasks = pgTable("marketing_tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
   campaignId: uuid("campaign_id").references(() => campaigns.id),
+  leadId: uuid("lead_id").references(() => leads.id),
+  opportunityId: uuid("opportunity_id").references(() => opportunities.id),
   title: varchar("title", { length: 255 }).notNull(),
   type: varchar("type").notNull(),
   subtype: varchar("subtype"),

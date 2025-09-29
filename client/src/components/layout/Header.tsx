@@ -2,6 +2,7 @@ import { Search, Bell, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
 interface HeaderProps {
   title: string;
@@ -9,6 +10,8 @@ interface HeaderProps {
 }
 
 export function Header({ title, icon: Icon }: HeaderProps) {
+  const unreadCount = useUnreadNotificationsCount();
+
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6" data-testid="header">
       <div className="flex items-center space-x-4">
@@ -33,9 +36,11 @@ export function Header({ title, icon: Icon }: HeaderProps) {
         {/* Notifications */}
         <Button variant="ghost" size="sm" className="relative p-2 hover:bg-muted rounded-lg" data-testid="notifications-button">
           <Bell className="w-5 h-5" />
-          <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 text-xs flex items-center justify-center">
-            5
-          </Badge>
+          {unreadCount > 0 && (
+            <Badge variant="destructive" className="absolute -top-1 -right-1 w-5 h-5 text-xs flex items-center justify-center">
+              {unreadCount}
+            </Badge>
+          )}
         </Button>
 
         {/* Quick Actions */}

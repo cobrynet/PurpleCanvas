@@ -26,6 +26,7 @@ import SignUp from "@/pages/SignUp";
 import OrganizationSelectorPage from "@/pages/OrganizationSelector";
 import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OrganizationGuard } from "@/components/OrganizationGuard";
+import { NotificationManager } from "@/components/NotificationManager";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -87,6 +88,7 @@ function App() {
         <OrganizationProvider>
           <TooltipProvider>
             <Toaster />
+            <NotificationManager />
             <Router />
           </TooltipProvider>
         </OrganizationProvider>

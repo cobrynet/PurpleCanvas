@@ -1240,6 +1240,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification API routes
+  app.post('/api/notifications/send', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const { insertNotificationSchema } = await import('@shared/schema');
+      const organizationId = req.currentOrganization;
+      const senderId = req.user.claims.sub;
+      
+      const body = insertNotificationSchema.parse({
+        ...req.body,
+        organizationId,
+      });
+      
+      const notification = await storage.createNotification(body);
+      
+      res.json({
+        success: true,
+        notification
+      });
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      res.status(500).json({ error: 'Failed to send notification' });
+    }
+  });
+
+  app.get('/api/notifications', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const organizationId = req.currentOrganization;
+      const userId = req.user.claims.sub;
+      
+      const notifications = await storage.getNotifications(userId, organizationId);
+      const unreadCount = await storage.getUnreadNotificationsCount(userId, organizationId);
+      
+      res.json({
+        notifications,
+        unreadCount
+      });
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+  });
+
+  app.patch('/api/notifications/:id/read', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const notificationId = req.params.id;
+      const organizationId = req.currentOrganization;
+      const userId = req.user.claims.sub;
+      
+      const notification = await storage.markNotificationAsRead(notificationId, userId, organizationId);
+      
+      if (!notification) {
+        return res.status(404).json({ error: 'Notification not found' });
+      }
+      
+      res.json({
+        success: true,
+        notification
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

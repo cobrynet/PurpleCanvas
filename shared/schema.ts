@@ -26,6 +26,8 @@ export const conversationStatusEnum = pgEnum('conversation_status', ['OPEN', 'PE
 export const channelEnum = pgEnum('channel', ['WIDGET', 'EMAIL']);
 export const agentPresenceStatusEnum = pgEnum('agent_presence_status', ['ONLINE', 'AWAY', 'OFFLINE']);
 export const orderStatusEnum = pgEnum('order_status', ['REQUESTED', 'CONFIRMED', 'IN_PROGRESS', 'DELIVERED', 'CLOSED']);
+export const periodicityEnum = pgEnum('periodicity', ['ANNUALE', 'SEMESTRALE', 'QUADRIMESTRALE']);
+export const budgetCategoryEnum = pgEnum('budget_category', ['SOCIAL_ADS', 'FIERE', 'COMMERCIALE', 'ALTRO']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -285,17 +287,39 @@ export const pipelineStages = pgTable("pipeline_stages", {
 });
 
 // Business Goals tables
-export const goals = pgTable("goals", {
+export const businessGoals = pgTable("business_goals", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
-  sector: varchar("sector"),
-  annualObjectives: text("annual_objectives").notNull(),
-  targetClients: text("target_clients"),
-  marketingBudget: real("marketing_budget"),
-  preferredChannels: text("preferred_channels").array(),
-  additionalNotes: text("additional_notes"),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  salesPipeline: text("sales_pipeline"),
+  fairs: text("fairs"),
+  digitalChannels: text("digital_channels"),
+  adInvestments: text("ad_investments"),
+  geoArea: text("geo_area"),
+  periodicity: periodicityEnum("periodicity").notNull(),
+  objectives: text("objectives").notNull(),
+  totalBudget: integer("total_budget").notNull(), // in centesimi
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const goalAttachments = pgTable("goal_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  goalId: uuid("goal_id").notNull().references(() => businessGoals.id),
+  assetId: uuid("asset_id").references(() => assets.id),
+  fileUrl: text("file_url"),
+  fileName: varchar("file_name").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const budgetAllocations = pgTable("budget_allocations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  goalId: uuid("goal_id").notNull().references(() => businessGoals.id),
+  category: budgetCategoryEnum("category").notNull(),
+  amount: integer("amount").notNull(), // in centesimi
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Marketplace tables
@@ -384,13 +408,37 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   assets: many(assets),
   audiences: many(audiences),
   orders: many(orgServiceOrders),
-  goals: many(goals),
+  businessGoals: many(businessGoals),
 }));
 
-export const goalsRelations = relations(goals, ({ one }) => ({
+export const businessGoalsRelations = relations(businessGoals, ({ one, many }) => ({
   organization: one(organizations, {
-    fields: [goals.organizationId],
+    fields: [businessGoals.organizationId],
     references: [organizations.id],
+  }),
+  createdByUser: one(users, {
+    fields: [businessGoals.createdByUserId],
+    references: [users.id],
+  }),
+  attachments: many(goalAttachments),
+  allocations: many(budgetAllocations),
+}));
+
+export const goalAttachmentsRelations = relations(goalAttachments, ({ one }) => ({
+  goal: one(businessGoals, {
+    fields: [goalAttachments.goalId],
+    references: [businessGoals.id],
+  }),
+  asset: one(assets, {
+    fields: [goalAttachments.assetId],
+    references: [assets.id],
+  }),
+}));
+
+export const budgetAllocationsRelations = relations(budgetAllocations, ({ one }) => ({
+  goal: one(businessGoals, {
+    fields: [budgetAllocations.goalId],
+    references: [businessGoals.id],
   }),
 }));
 
@@ -493,10 +541,19 @@ export const insertAssetLinkSchema = createInsertSchema(assetLinks).omit({
   createdAt: true,
 });
 
-export const insertGoalSchema = createInsertSchema(goals).omit({
+export const insertBusinessGoalSchema = createInsertSchema(businessGoals).omit({
   id: true,
   createdAt: true,
-  updatedAt: true,
+});
+
+export const insertGoalAttachmentSchema = createInsertSchema(goalAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBudgetAllocationSchema = createInsertSchema(budgetAllocations).omit({
+  id: true,
+  createdAt: true,
 });
 
 // Types
@@ -526,5 +583,9 @@ export type InsertConversationMessage = z.infer<typeof insertConversationMessage
 export type AgentPresence = typeof agentPresence.$inferSelect;
 export type AssetLink = typeof assetLinks.$inferSelect;
 export type InsertAssetLink = z.infer<typeof insertAssetLinkSchema>;
-export type Goal = typeof goals.$inferSelect;
-export type InsertGoal = z.infer<typeof insertGoalSchema>;
+export type BusinessGoal = typeof businessGoals.$inferSelect;
+export type InsertBusinessGoal = z.infer<typeof insertBusinessGoalSchema>;
+export type GoalAttachment = typeof goalAttachments.$inferSelect;
+export type InsertGoalAttachment = z.infer<typeof insertGoalAttachmentSchema>;
+export type BudgetAllocation = typeof budgetAllocations.$inferSelect;
+export type InsertBudgetAllocation = z.infer<typeof insertBudgetAllocationSchema>;

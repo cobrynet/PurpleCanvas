@@ -130,13 +130,17 @@ export default function OfflineActivities() {
   });
 
   // Handle file upload
-  const handleGetUploadParameters = async () => {
+  const handleGetUploadParameters = async (file: any) => {
     const response = await apiRequest("/api/upload/init", "POST", {
-      filename: "attachment"
+      filename: `offline-activities/${file.name}`,
+      fileType: file.type,
+      fileSize: file.size
     }) as any;
     return {
       method: "PUT" as const,
       url: response.uploadUrl,
+      headers: response.headers || {},
+      objectPath: response.objectPath,
     };
   };
 
@@ -147,7 +151,7 @@ export default function OfflineActivities() {
       try {
         // Complete the upload process and save asset
         const response = await apiRequest("/api/upload/complete", "POST", {
-          objectPath: file.meta?.objectPath || `/objects/uploads/${file.id}`,
+          objectPath: file.meta?.objectPath,
           mimeType: file.type,
           sizeBytes: file.size,
           filename: file.name,

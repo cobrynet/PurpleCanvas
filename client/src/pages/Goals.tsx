@@ -103,13 +103,17 @@ export default function Goals() {
   });
 
   // Handle file upload
-  const handleGetUploadParameters = async () => {
+  const handleGetUploadParameters = async (file: any) => {
     const response = await apiRequest("/api/upload/init", "POST", {
-      filename: "business-goal-document"
+      filename: `business-goals/${file.name}`,
+      fileType: file.type,
+      fileSize: file.size
     }) as any;
     return {
       method: "PUT" as const,
       url: response.uploadUrl,
+      headers: response.headers || {},
+      objectPath: response.objectPath,
     };
   };
 
@@ -120,7 +124,7 @@ export default function Goals() {
       try {
         // Complete the upload process and save asset
         const response = await apiRequest("/api/upload/complete", "POST", {
-          objectPath: file.meta?.objectPath || `/objects/uploads/${file.id}`,
+          objectPath: file.meta?.objectPath,
           mimeType: file.type,
           sizeBytes: file.size,
           filename: file.name,
@@ -481,6 +485,7 @@ export default function Goals() {
                 <ObjectUploader
                   maxNumberOfFiles={3}
                   maxFileSize={25 * 1024 * 1024} // 25MB
+                  allowedFileTypes={['application/pdf']}
                   onGetUploadParameters={handleGetUploadParameters}
                   onComplete={handleUploadComplete}
                   buttonClassName="w-full"

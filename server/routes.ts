@@ -358,6 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
+      const userId = req.user.claims.sub;
       
       if (!['ORG_ADMIN', 'MARKETER'].includes(membership.role)) {
         return res.status(403).json({ message: "Access denied" });
@@ -730,7 +731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         await objectStorageService.downloadObject(objectFile, res);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error serving object:", error);
         if (error.name === 'ObjectNotFoundError') {
           return res.status(404).json({ error: "Object not found" });
@@ -746,17 +747,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload routes
   app.post('/api/upload/init', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
-      const { filename } = req.body;
+      const { filename, fileType, fileSize } = req.body;
+      const orgId = req.currentOrganization;
+      const userId = req.user.claims.sub;
+      
+      // Validate file size (max 50MB)
+      const maxFileSize = 50 * 1024 * 1024; // 50MB
+      if (fileSize && fileSize > maxFileSize) {
+        return res.status(400).json({ error: 'File size exceeds maximum limit of 50MB' });
+      }
       
       const { ObjectStorageService } = await import('./objectStorage');
       const objectStorageService = new ObjectStorageService();
       
-      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(filename || 'file');
+      // Generate org-scoped object path
+      const orgScopedFilename = `orgs/${orgId}/${filename || 'file'}`;
+      const { uploadUrl, publicUrl, objectPath } = await objectStorageService.getObjectEntityUploadURL(orgScopedFilename);
+      
+      // Prepare headers for Uppy/S3 upload
+      const headers: Record<string, string> = {};
+      if (fileType) {
+        headers['Content-Type'] = fileType;
+      }
       
       res.json({
         uploadUrl,
         objectPath,
-        method: 'PUT'
+        method: 'PUT',
+        headers
       });
     } catch (error) {
       console.error('Error generating upload URL:', error);

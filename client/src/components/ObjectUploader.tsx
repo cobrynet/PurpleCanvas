@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
-  onGetUploadParameters: () => Promise<{
+  allowedFileTypes?: string[];
+  onGetUploadParameters: (file: any) => Promise<{
     method: "PUT";
     url: string;
+    headers?: Record<string, string>;
+    objectPath?: string;
   }>;
   onComplete?: (
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
@@ -51,25 +54,45 @@ interface ObjectUploaderProps {
 export function ObjectUploader({
   maxNumberOfFiles = 1,
   maxFileSize = 10485760, // 10MB default
+  allowedFileTypes,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
   children,
 }: ObjectUploaderProps) {
   const [showModal, setShowModal] = useState(false);
+  const [objectPaths] = useState(() => new Map<string, string>());
+  
   const [uppy] = useState(() =>
     new Uppy({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
+        allowedFileTypes,
       },
       autoProceed: false,
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
-        getUploadParameters: onGetUploadParameters,
+        getUploadParameters: async (file) => {
+          const result = await onGetUploadParameters(file);
+          // Store objectPath for later use in onComplete
+          if ((result as any).objectPath) {
+            objectPaths.set(file.id, (result as any).objectPath);
+          }
+          return result;
+        },
       })
       .on("complete", (result) => {
+        // Enhance result with objectPaths
+        if (result.successful) {
+          result.successful.forEach(file => {
+            const objectPath = objectPaths.get(file.id);
+            if (objectPath) {
+              file.meta = { ...file.meta, objectPath };
+            }
+          });
+        }
         onComplete?.(result);
       })
   );

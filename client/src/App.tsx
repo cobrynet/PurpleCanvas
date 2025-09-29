@@ -21,6 +21,8 @@ import ConsoleOperatori from "@/pages/ConsoleOperatori";
 import Settings from "@/pages/Settings";
 import Goals from "@/pages/Goals";
 import OfflineActivities from "@/pages/OfflineActivities";
+import SignIn from "@/pages/SignIn";
+import SignUp from "@/pages/SignUp";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -28,7 +30,12 @@ function Router() {
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <Switch>
+          <Route path="/sign-in" component={SignIn} />
+          <Route path="/sign-up" component={SignUp} />
+          <Route path="/" component={Landing} />
+          <Route component={Landing} />
+        </Switch>
       ) : (
         <>
           <AppLayout>

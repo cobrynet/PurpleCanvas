@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Users, Target, BarChart3 } from "lucide-react";
+import { Building2, Users, Target, BarChart3, Mail, UserPlus } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Landing() {
+  const [, setLocation] = useLocation();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10" data-testid="landing-page">
       <div className="container mx-auto px-4 py-16">
@@ -20,14 +23,38 @@ export default function Landing() {
             Piattaforma multi-tenant B2B per gestire marketing e commerciale in modo autonomo, 
             con marketplace di servizi integrato.
           </p>
-          <Button 
-            size="lg" 
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-xl"
-            onClick={() => window.location.href = "/api/login"}
-            data-testid="login-button"
-          >
-            Accedi alla Piattaforma
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button 
+              size="lg" 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-xl"
+              onClick={() => setLocation("/sign-up")}
+              data-testid="signup-button"
+            >
+              <UserPlus className="w-5 h-5 mr-2" />
+              Registrati Gratis
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="px-8 py-3 rounded-xl border-2"
+              onClick={() => setLocation("/sign-in")}
+              data-testid="signin-button"
+            >
+              <Mail className="w-5 h-5 mr-2" />
+              Accedi
+            </Button>
+          </div>
+          <div className="mt-4">
+            <Button 
+              variant="ghost" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => window.location.href = "/api/login"}
+              data-testid="oauth-login-button"
+            >
+              <Building2 className="w-4 h-4 mr-2" />
+              Continua con Replit
+            </Button>
+          </div>
         </div>
 
         {/* Features Grid */}

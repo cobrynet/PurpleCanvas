@@ -700,7 +700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/console/conversations/:id/accept', isAuthenticated, requireSuperAdmin, async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const operatorId = req.user?.claims?.sub;
+      const operatorId = (req.user as any)?.claims?.sub;
       
       // In a real implementation, this would:
       // 1. Update conversation status to 'OPEN'
@@ -728,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const conversationId = req.params.id;
       const { agentId } = req.body;
-      const operatorId = req.user?.claims?.sub;
+      const operatorId = (req.user as any)?.claims?.sub;
       
       if (!agentId) {
         return res.status(400).json({ message: "Agent ID is required for transfer" });
@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/console/conversations/:id/close', isAuthenticated, requireSuperAdmin, async (req, res) => {
     try {
       const conversationId = req.params.id;
-      const operatorId = req.user?.claims?.sub;
+      const operatorId = (req.user as any)?.claims?.sub;
       
       // In a real implementation, this would:
       // 1. Update conversation status to 'CLOSED'

@@ -173,8 +173,10 @@ export default function ConsoleOperatori() {
     closeMutation.mutate(conversationId);
   };
 
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('it-IT', {
+  const formatTime = (timestamp: string | Date | null | undefined) => {
+    if (!timestamp) return 'N/A';
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    return date.toLocaleString('it-IT', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -281,9 +283,9 @@ export default function ConsoleOperatori() {
                           {conversation.customerName || `Cliente ${conversation.userId?.slice(-4) || 'Unknown'}`}
                         </CardTitle>
                         <div className="flex items-center gap-2">
-                          {getStatusBadge(conversation.status)}
+                          {getStatusBadge(conversation.status || 'OPEN')}
                           <span className={`text-xs font-medium ${getPriorityColor(conversation.priority || 'P2')}`}>
-                            {conversation.priority}
+                            {conversation.priority || 'P2'}
                           </span>
                         </div>
                       </div>
@@ -291,7 +293,7 @@ export default function ConsoleOperatori() {
                     <CardDescription className="text-xs">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {formatTime(conversation.createdAt || new Date().toISOString())}
+                        {formatTime(conversation.createdAt)}
                       </div>
                     </CardDescription>
                   </CardHeader>
@@ -399,7 +401,7 @@ export default function ConsoleOperatori() {
                           {conversation.customerName || `Cliente ${conversation.userId?.slice(-4) || 'Unknown'}`}
                         </CardTitle>
                         <div className="flex items-center gap-2">
-                          {getStatusBadge(conversation.status)}
+                          {getStatusBadge(conversation.status || 'OPEN')}
                           {conversation.assigneeId && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <User className="h-3 w-3" />
@@ -412,7 +414,7 @@ export default function ConsoleOperatori() {
                     <CardDescription className="text-xs">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {formatTime(conversation.updatedAt || conversation.createdAt || new Date().toISOString())}
+                        {formatTime(conversation.updatedAt || conversation.createdAt)}
                       </div>
                     </CardDescription>
                   </CardHeader>

@@ -1028,7 +1028,7 @@ function OfflineSection() {
     isLoading: activitiesLoading,
     error: activitiesError 
   } = useQuery({
-    queryKey: ["/api/organizations", currentOrg?.id, "offline-activities"],
+    queryKey: ["/api/marketing/offline"],
     enabled: !!currentOrg?.id && isAuthenticated && hasMarketingAccess,
     retry: false,
   });

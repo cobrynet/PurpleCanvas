@@ -56,12 +56,9 @@ export function ChatWidget() {
 
   const initializeConversation = async () => {
     try {
-      const response = await apiRequest("/api/conversations", {
-        method: "POST",
-        body: JSON.stringify({ type: "chat_start" })
-      });
+      const response = await apiRequest("POST", "/api/conversations", { type: "chat_start" });
       
-      const newConversation = response as Conversation;
+      const newConversation = await response.json() as Conversation;
       setConversation(newConversation);
       setMessages([GREETING_MESSAGE]);
     } catch (error) {
@@ -92,12 +89,9 @@ export function ChatWidget() {
 
     try {
       // Send message to API
-      const response = await apiRequest(`/api/conversations/${conversation?.id || 'local'}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ 
-          text: userMessage.text,
-          sender: 'user'
-        })
+      const response = await apiRequest("POST", `/api/conversations/${conversation?.id || 'local'}/messages`, { 
+        text: userMessage.text,
+        sender: 'user'
       });
 
       // Mock response from Francesca
@@ -176,9 +170,7 @@ export function ChatWidget() {
     try {
       // Update conversation status
       if (conversation) {
-        await apiRequest(`/api/conversations/${conversation.id}/escalate`, {
-          method: "POST"
-        });
+        await apiRequest("POST", `/api/conversations/${conversation.id}/escalate`);
       }
 
       const escalationMessage: Message = {

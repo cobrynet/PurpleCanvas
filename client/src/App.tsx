@@ -17,6 +17,7 @@ import Tasks from "@/pages/Tasks";
 import Marketplace from "@/pages/Marketplace";
 import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
+import ConsoleOperatori from "@/pages/ConsoleOperatori";
 import Settings from "@/pages/Settings";
 
 function Router() {
@@ -41,6 +42,7 @@ function Router() {
               <Route path="/marketplace" component={Marketplace} />
               <Route path="/notifications" component={Notifications} />
               <Route path="/chat" component={Chat} />
+              <Route path="/console" component={ConsoleOperatori} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>

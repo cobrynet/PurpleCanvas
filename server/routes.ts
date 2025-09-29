@@ -571,6 +571,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Console API routes for operators (SUPER_ADMIN only)
+  const requireSuperAdmin = async (req: any, res: any, next: any) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userMemberships = await storage.getUserOrganizations(userId);
+      
+      const isSuperAdmin = userMemberships.some(org => 
+        org.membership?.role === 'SUPER_ADMIN'
+      );
+      
+      if (!isSuperAdmin) {
+        return res.status(403).json({ message: "SUPER_ADMIN access required" });
+      }
+      
+      next();
+    } catch (error) {
+      console.error("Error checking SUPER_ADMIN access:", error);
+      res.status(500).json({ message: "Failed to verify access" });
+    }
+  };
+
+  // Get conversations for console
+  app.get('/api/console/conversations', isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      // Mock conversations data for now
+      const conversations = [
+        {
+          id: `conv-${Date.now()}-1`,
+          userId: 'user-123',
+          status: 'PENDING' as const,
+          channel: 'WIDGET' as const,
+          assigneeId: null,
+          escalatedAt: null,
+          closedAt: null,
+          subject: null,
+          priority: 'P2' as const,
+          createdAt: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+          updatedAt: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
+          customerName: 'Marco Rossi',
+          lastMessage: 'Ho bisogno di aiuto urgente con il mio ordine. È stato addebitato ma non ricevuto.',
+          messages: []
+        },
+        {
+          id: `conv-${Date.now()}-2`,
+          userId: 'user-456',
+          status: 'PENDING' as const,
+          channel: 'WIDGET' as const,
+          assigneeId: null,
+          escalatedAt: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
+          closedAt: null,
+          subject: null,
+          priority: 'P1' as const,
+          createdAt: new Date(Date.now() - 600000).toISOString(), // 10 minutes ago
+          updatedAt: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
+          customerName: 'Laura Bianchi',
+          lastMessage: 'Il sistema non funziona, non riesco ad accedere al mio account da stamattina.',
+          messages: []
+        },
+        {
+          id: `conv-${Date.now()}-3`,
+          userId: 'user-789',
+          status: 'OPEN' as const,
+          channel: 'WIDGET' as const,
+          assigneeId: 'agent-001',
+          escalatedAt: null,
+          closedAt: null,
+          subject: 'Supporto tecnico',
+          priority: 'P2' as const,
+          createdAt: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
+          updatedAt: new Date(Date.now() - 30000).toISOString(), // 30 seconds ago
+          customerName: 'Giuseppe Verdi',
+          lastMessage: 'Perfetto, grazie per il supporto. Ora funziona tutto.',
+          messages: []
+        }
+      ];
+
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching console conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // Get available agents
+  app.get('/api/console/agents', isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      // Mock agents data
+      const agents = [
+        {
+          id: 'agent-001',
+          name: 'Sofia Martini',
+          available: true,
+          currentChats: 2,
+          maxChats: 5
+        },
+        {
+          id: 'agent-002',
+          name: 'Andrea Romano',
+          available: true,
+          currentChats: 1,
+          maxChats: 4
+        },
+        {
+          id: 'agent-003',
+          name: 'Chiara Conti',
+          available: true,
+          currentChats: 0,
+          maxChats: 6
+        },
+        {
+          id: 'agent-004',
+          name: 'Luca Ferretti',
+          available: false,
+          currentChats: 5,
+          maxChats: 5
+        }
+      ];
+
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+      res.status(500).json({ message: "Failed to fetch agents" });
+    }
+  });
+
+  // Accept conversation
+  app.post('/api/console/conversations/:id/accept', isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const operatorId = req.user?.claims?.sub;
+      
+      // In a real implementation, this would:
+      // 1. Update conversation status to 'OPEN'
+      // 2. Set assigneeId to the operator who accepted
+      // 3. Update updatedAt timestamp
+      // 4. Optionally notify the customer
+      
+      console.log(`Conversation ${conversationId} accepted by operator ${operatorId}`);
+      
+      res.json({
+        success: true,
+        message: 'Conversation accepted successfully',
+        conversationId,
+        assigneeId: operatorId,
+        acceptedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error accepting conversation:", error);
+      res.status(500).json({ message: "Failed to accept conversation" });
+    }
+  });
+
+  // Transfer conversation
+  app.post('/api/console/conversations/:id/transfer', isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const { agentId } = req.body;
+      const operatorId = req.user?.claims?.sub;
+      
+      if (!agentId) {
+        return res.status(400).json({ message: "Agent ID is required for transfer" });
+      }
+      
+      // In a real implementation, this would:
+      // 1. Update conversation assigneeId to the new agent
+      // 2. Update updatedAt timestamp  
+      // 3. Log the transfer action
+      // 4. Notify both the previous and new agent
+      // 5. Optionally notify the customer about the transfer
+      
+      console.log(`Conversation ${conversationId} transferred from ${operatorId} to agent ${agentId}`);
+      
+      res.json({
+        success: true,
+        message: 'Conversation transferred successfully',
+        conversationId,
+        fromOperator: operatorId,
+        toAgent: agentId,
+        transferredAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error transferring conversation:", error);
+      res.status(500).json({ message: "Failed to transfer conversation" });
+    }
+  });
+
+  // Close conversation
+  app.post('/api/console/conversations/:id/close', isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const conversationId = req.params.id;
+      const operatorId = req.user?.claims?.sub;
+      
+      // In a real implementation, this would:
+      // 1. Update conversation status to 'CLOSED'
+      // 2. Set closedAt timestamp
+      // 3. Update updatedAt timestamp
+      // 4. Log the closure action
+      // 5. Optionally send closure notification to customer
+      // 6. Update agent availability/chat count
+      
+      console.log(`Conversation ${conversationId} closed by operator ${operatorId}`);
+      
+      res.json({
+        success: true,
+        message: 'Conversation closed successfully',
+        conversationId,
+        closedBy: operatorId,
+        closedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error closing conversation:", error);
+      res.status(500).json({ message: "Failed to close conversation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

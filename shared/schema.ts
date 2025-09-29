@@ -323,6 +323,40 @@ export const orgServiceOrders = pgTable("org_service_orders", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Chat tables
+export const conversations = pgTable("conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  status: conversationStatusEnum("status").default('OPEN'),
+  channel: channelEnum("channel").default('WIDGET'),
+  assigneeId: varchar("assignee_id").references(() => users.id),
+  escalatedAt: timestamp("escalated_at"),
+  closedAt: timestamp("closed_at"),
+  subject: varchar("subject"),
+  priority: priorityEnum("priority").default('P2'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const conversationMessages = pgTable("conversation_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => conversations.id),
+  senderId: varchar("sender_id").references(() => users.id),
+  senderType: varchar("sender_type").notNull(), // 'user', 'agent', 'system'
+  content: text("content").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const agentPresence = pgTable("agent_presence", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agentId: varchar("agent_id").notNull().references(() => users.id),
+  status: agentPresenceStatusEnum("status").default('OFFLINE'),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  maxConcurrentChats: integer("max_concurrent_chats").default(5),
+  currentChatCount: integer("current_chat_count").default(0),
+});
+
 // Relationships
 export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(memberships),
@@ -421,6 +455,17 @@ export const insertSocialPostSchema = createInsertSchema(socialPosts).omit({
   createdAt: true,
 });
 
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -441,3 +486,8 @@ export type InsertSocialPost = z.infer<typeof insertSocialPostSchema>;
 export type Asset = typeof assets.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type OrgServiceOrder = typeof orgServiceOrders.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
+export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
+export type AgentPresence = typeof agentPresence.$inferSelect;

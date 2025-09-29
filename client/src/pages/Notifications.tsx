@@ -1,7 +1,9 @@
-"use client"
-
 import { useState, useEffect } from "react";
 import { Bell, Clock, CheckCircle2, X, Settings, Filter } from "lucide-react";
+import { MainLayout } from "@/components/layout/MainLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 // Mock notifications data
 const mockNotifications = [
@@ -52,85 +54,7 @@ const mockNotifications = [
   }
 ];
 
-// Local UI components to avoid import issues
-const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`}>
-    {children}
-  </div>
-);
-
-const CardContent = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`p-6 pt-0 ${className}`}>
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>
-    {children}
-  </div>
-);
-
-const CardTitle = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <h3 className={`text-2xl font-semibold leading-none tracking-tight ${className}`}>
-    {children}
-  </h3>
-);
-
-const Button = ({ children, onClick, className = "", variant = "default", size = "default", disabled = false }: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-  variant?: "default" | "outline" | "ghost" | "secondary";
-  size?: "default" | "sm" | "lg";
-  disabled?: boolean;
-}) => {
-  const baseStyles = "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
-  
-  const variants = {
-    default: "bg-primary text-primary-foreground hover:bg-primary/90",
-    outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-    ghost: "hover:bg-accent hover:text-accent-foreground",
-    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-  };
-  
-  const sizes = {
-    default: "h-10 px-4 py-2",
-    sm: "h-9 rounded-md px-3",
-    lg: "h-11 rounded-md px-8"
-  };
-  
-  return (
-    <button
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Badge = ({ children, className = "", variant = "default" }: {
-  children: React.ReactNode;
-  className?: string;
-  variant?: "default" | "secondary" | "destructive" | "outline";
-}) => {
-  const variants = {
-    default: "bg-primary text-primary-foreground",
-    secondary: "bg-secondary text-secondary-foreground",
-    destructive: "bg-destructive text-destructive-foreground",
-    outline: "text-foreground"
-  };
-  
-  return (
-    <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[variant]} ${className}`}>
-      {children}
-    </div>
-  );
-};
-
-export default function NotificationsPage() {
+export default function Notifications() {
   const [notifications, setNotifications] = useState(mockNotifications);
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -212,8 +136,8 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <MainLayout>
+      <div className="container mx-auto p-6 max-w-4xl">
         {/* Header */}
         <Card className="mb-6">
           <CardHeader>
@@ -233,11 +157,11 @@ export default function NotificationsPage() {
                     {unreadCount} non lette
                   </Badge>
                 )}
-                <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                <Button variant="outline" size="sm" onClick={markAllAsRead} data-testid="button-mark-all-read">
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Segna tutte come lette
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" data-testid="button-settings">
                   <Settings className="h-4 w-4" />
                 </Button>
               </div>
@@ -262,6 +186,7 @@ export default function NotificationsPage() {
                     variant={filter === f ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setFilter(f as any)}
+                    data-testid={`filter-${f}`}
                   >
                     {f === "all" ? "Tutte" : f === "unread" ? "Non lette" : "Lette"}
                   </Button>
@@ -276,6 +201,7 @@ export default function NotificationsPage() {
                     variant={categoryFilter === cat ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => setCategoryFilter(cat)}
+                    data-testid={`category-filter-${cat}`}
                   >
                     {cat === "all" ? "Tutte" : cat}
                   </Button>
@@ -305,6 +231,7 @@ export default function NotificationsPage() {
                   !notification.read ? 'border-l-4 border-l-primary bg-accent/5' : ''
                 }`}
                 onClick={() => markAsRead(notification.id)}
+                data-testid={`notification-${notification.id}`}
               >
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-start gap-4">
@@ -325,7 +252,7 @@ export default function NotificationsPage() {
                           </p>
                           <div className="flex items-center gap-3 mt-3">
                             <Badge 
-                              variant={getCategoryBadgeVariant(notification.category)}
+                              variant={getCategoryBadgeVariant(notification.category) as any}
                               className="text-xs"
                             >
                               {notification.category}
@@ -352,6 +279,7 @@ export default function NotificationsPage() {
                                 markAsRead(notification.id);
                               }}
                               className="text-xs"
+                              data-testid={`mark-read-${notification.id}`}
                             >
                               Segna come letta
                             </Button>
@@ -364,6 +292,7 @@ export default function NotificationsPage() {
                               deleteNotification(notification.id);
                             }}
                             className="text-destructive hover:text-destructive"
+                            data-testid={`delete-${notification.id}`}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -388,6 +317,6 @@ export default function NotificationsPage() {
           </Card>
         )}
       </div>
-    </div>
+    </MainLayout>
   );
 }

@@ -14,6 +14,7 @@ import MarketingOverview from "@/pages/MarketingOverview";
 import CRM from "@/pages/CRM";
 import Tasks from "@/pages/Tasks";
 import Marketplace from "@/pages/Marketplace";
+import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import Settings from "@/pages/Settings";
 
@@ -36,6 +37,7 @@ function Router() {
             <Route path="/crm/cadences" component={CRM} />
             <Route path="/tasks" component={Tasks} />
             <Route path="/marketplace" component={Marketplace} />
+            <Route path="/notifications" component={Notifications} />
             <Route path="/chat" component={Chat} />
             <Route path="/settings" component={Settings} />
             <Route component={NotFound} />

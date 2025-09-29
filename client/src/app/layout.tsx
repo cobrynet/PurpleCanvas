@@ -35,6 +35,7 @@ const sidebarItems = [
   { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
   { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag, href: "/marketplace" },
+  { id: "notifiche", label: "Notifiche", icon: Bell, href: "/notifications" },
   { id: "chat", label: "Chat", icon: MessageCircle, href: "/chat" },
   { id: "impostazioni", label: "Impostazioni", icon: Settings, href: "/settings" },
 ];

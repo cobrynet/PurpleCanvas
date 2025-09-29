@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail, Play, Pause, Search, Filter, Calendar, Users, Clock, MessageSquare } from "lucide-react";
+import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail, Play, Pause, Search, Filter, Calendar, Users, Clock, MessageSquare, BarChart3 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { z } from "zod";
 
 const leadFormSchema = insertLeadSchema.extend({
@@ -1082,16 +1082,84 @@ export default function CRM() {
     );
   };
 
+  const crmTabs = [
+    { 
+      id: 'leads', 
+      label: 'Lead', 
+      icon: UserPlus, 
+      href: '/crm/leads',
+      description: 'Gestisci i tuoi lead'
+    },
+    { 
+      id: 'opportunities', 
+      label: 'Opportunità', 
+      icon: TrendingUp, 
+      href: '/crm/opportunities',
+      description: 'Monitora le opportunità di vendita'
+    },
+    { 
+      id: 'pipeline', 
+      label: 'Pipeline', 
+      icon: BarChart3, 
+      href: '/crm/pipeline',
+      description: 'Visualizza la pipeline commerciale'
+    },
+    { 
+      id: 'cadences', 
+      label: 'Sequenze', 
+      icon: Mail, 
+      href: '/crm/cadences',
+      description: 'Gestisci le sequenze di vendita'
+    }
+  ];
+
   return (
     <MainLayout 
-      title={currentView === 'opportunities' ? 'Opportunità' : currentView === 'pipeline' ? 'Pipeline' : currentView === 'cadences' ? 'Sequenze di Vendita' : 'Lead'} 
-      icon={currentView === 'opportunities' ? TrendingUp : currentView === 'cadences' ? Mail : UserPlus}
+      title="CRM - Sistema Commerciale" 
+      icon={Users}
     >
-      <div data-testid="crm-content">
-        {currentView === 'leads' && renderLeadsView()}
-        {currentView === 'opportunities' && renderOpportunitiesView()}
-        {currentView === 'pipeline' && renderPipelineView()}
-        {currentView === 'cadences' && renderCadencesView()}
+      <div className="space-y-6" data-testid="crm-content">
+        {/* Navigation Tabs */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {crmTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = currentView === tab.id;
+                
+                return (
+                  <Link key={tab.id} href={tab.href}>
+                    <Button
+                      variant={isActive ? "default" : "outline"}
+                      className={`w-full h-auto p-4 flex flex-col items-center space-y-2 ${
+                        isActive 
+                          ? "bg-[#390035] hover:bg-[#901d6b] text-white" 
+                          : "hover:bg-muted"
+                      }`}
+                      data-testid={`crm-tab-${tab.id}`}
+                    >
+                      <Icon className="h-6 w-6" />
+                      <div className="text-center">
+                        <div className="font-medium">{tab.label}</div>
+                        <div className="text-xs opacity-80 mt-1">
+                          {tab.description}
+                        </div>
+                      </div>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Current View Content */}
+        <div>
+          {currentView === 'leads' && renderLeadsView()}
+          {currentView === 'opportunities' && renderOpportunitiesView()}
+          {currentView === 'pipeline' && renderPipelineView()}
+          {currentView === 'cadences' && renderCadencesView()}
+        </div>
       </div>
     </MainLayout>
   );

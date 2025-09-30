@@ -206,6 +206,8 @@ function PostOrganiciSection() {
                     value={postForm.title}
                     onChange={(e) => setPostForm(prev => ({ ...prev, title: e.target.value }))}
                     data-testid="post-title-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 
@@ -236,6 +238,8 @@ function PostOrganiciSection() {
                     onChange={(e) => setPostForm(prev => ({ ...prev, copy: e.target.value }))}
                     data-testid="post-copy-input"
                     rows={4}
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 
@@ -248,6 +252,8 @@ function PostOrganiciSection() {
                     accept="image/*,video/*"
                     onChange={handleFileChange}
                     data-testid="post-file-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                   {postForm.content && (
                     <p className="text-sm text-muted-foreground">
@@ -265,6 +271,8 @@ function PostOrganiciSection() {
                     value={postForm.scheduledAt}
                     onChange={(e) => setPostForm(prev => ({ ...prev, scheduledAt: e.target.value }))}
                     data-testid="post-scheduled-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 
@@ -612,7 +620,7 @@ function CampagneSection() {
               <DialogTitle>Crea Nuova Campagna ADV</DialogTitle>
             </DialogHeader>
             
-            <form onSubmit={handleCreateAdvCampaign} className="space-y-6 py-4">
+            <form onSubmit={handleCreateAdvCampaign} className="space-y-6 py-4" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
               {/* Nome */}
               <div className="space-y-2">
                 <Label htmlFor="adv-name">Nome Campagna *</Label>
@@ -623,6 +631,8 @@ function CampagneSection() {
                   onChange={(e) => setAdvCampaignForm(prev => ({ ...prev, name: e.target.value }))}
                   data-testid="adv-name-input"
                   required
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
 
@@ -636,6 +646,8 @@ function CampagneSection() {
                   onChange={(e) => setAdvCampaignForm(prev => ({ ...prev, objective: e.target.value }))}
                   data-testid="adv-objective-input"
                   rows={3}
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
 
@@ -673,6 +685,8 @@ function CampagneSection() {
                   data-testid="adv-budget-input"
                   min="0"
                   step="0.01"
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
 
@@ -686,6 +700,8 @@ function CampagneSection() {
                     value={advCampaignForm.startAt}
                     onChange={(e) => setAdvCampaignForm(prev => ({ ...prev, startAt: e.target.value }))}
                     data-testid="adv-start-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
                 <div className="space-y-2">
@@ -696,6 +712,8 @@ function CampagneSection() {
                     value={advCampaignForm.endAt}
                     onChange={(e) => setAdvCampaignForm(prev => ({ ...prev, endAt: e.target.value }))}
                     data-testid="adv-end-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
               </div>
@@ -748,7 +766,7 @@ function CampagneSection() {
               <DialogTitle>Modifica Campagna ADV</DialogTitle>
             </DialogHeader>
             
-            <form onSubmit={handleUpdateCampaign} className="space-y-6 py-4">
+            <form onSubmit={handleUpdateCampaign} className="space-y-6 py-4" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
               {/* Nome */}
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Nome Campagna *</Label>
@@ -759,6 +777,8 @@ function CampagneSection() {
                   onChange={(e) => setEditCampaignForm(prev => ({ ...prev, name: e.target.value }))}
                   data-testid="edit-name-input"
                   required
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
 
@@ -772,6 +792,8 @@ function CampagneSection() {
                   onChange={(e) => setEditCampaignForm(prev => ({ ...prev, objective: e.target.value }))}
                   data-testid="edit-objective-input"
                   rows={3}
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
 
@@ -807,6 +829,8 @@ function CampagneSection() {
                   data-testid="edit-budget-input"
                   min="0"
                   step="0.01"
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
 
@@ -820,6 +844,8 @@ function CampagneSection() {
                     value={editCampaignForm.startAt}
                     onChange={(e) => setEditCampaignForm(prev => ({ ...prev, startAt: e.target.value }))}
                     data-testid="edit-start-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
                 <div className="space-y-2">
@@ -830,6 +856,8 @@ function CampagneSection() {
                     value={editCampaignForm.endAt}
                     onChange={(e) => setEditCampaignForm(prev => ({ ...prev, endAt: e.target.value }))}
                     data-testid="edit-end-input"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
               </div>

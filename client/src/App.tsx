@@ -29,6 +29,7 @@ import { OrganizationProvider } from "@/hooks/useOrganization";
 import { OrganizationGuard } from "@/components/OrganizationGuard";
 import { NotificationManager } from "@/components/NotificationManager";
 import { NotificationTestButton } from "@/components/NotificationTestButton";
+import { ModalProvider } from "@/contexts/ModalContext";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -88,14 +89,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="stratikey-ui-theme">
-        <OrganizationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <NotificationManager />
-            <NotificationTestButton />
-            <Router />
-          </TooltipProvider>
-        </OrganizationProvider>
+        <ModalProvider>
+          <OrganizationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <NotificationManager />
+              <NotificationTestButton />
+              <Router />
+            </TooltipProvider>
+          </OrganizationProvider>
+        </ModalProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

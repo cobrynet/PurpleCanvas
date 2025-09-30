@@ -280,7 +280,7 @@ export default function CRM() {
               <DialogTitle>Crea Nuovo Lead</DialogTitle>
             </DialogHeader>
             <Form {...leadForm}>
-              <form onSubmit={leadForm.handleSubmit(onCreateLead)} className="space-y-4">
+              <form onSubmit={leadForm.handleSubmit(onCreateLead)} className="space-y-4" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={leadForm.control}
@@ -289,7 +289,7 @@ export default function CRM() {
                       <FormItem>
                         <FormLabel>Nome</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="lead-first-name" />
+                          <Input {...field} data-testid="lead-first-name" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -302,7 +302,7 @@ export default function CRM() {
                       <FormItem>
                         <FormLabel>Cognome</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="lead-last-name" />
+                          <Input {...field} data-testid="lead-last-name" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -316,7 +316,7 @@ export default function CRM() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" {...field} data-testid="lead-email" />
+                        <Input type="email" {...field} data-testid="lead-email" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -329,7 +329,7 @@ export default function CRM() {
                     <FormItem>
                       <FormLabel>Telefono</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="lead-phone" />
+                        <Input {...field} value={field.value || ""} data-testid="lead-phone" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -342,7 +342,7 @@ export default function CRM() {
                     <FormItem>
                       <FormLabel>Azienda</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="lead-company" />
+                        <Input {...field} data-testid="lead-company" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -530,7 +530,7 @@ export default function CRM() {
               <DialogTitle>Crea Nuova Opportunità</DialogTitle>
             </DialogHeader>
             <Form {...opportunityForm}>
-              <form onSubmit={opportunityForm.handleSubmit(onCreateOpportunity)} className="space-y-4">
+              <form onSubmit={opportunityForm.handleSubmit(onCreateOpportunity)} className="space-y-4" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
                 <FormField
                   control={opportunityForm.control}
                   name="title"
@@ -538,7 +538,7 @@ export default function CRM() {
                     <FormItem>
                       <FormLabel>Titolo</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="opportunity-title" />
+                        <Input {...field} data-testid="opportunity-title" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -607,6 +607,8 @@ export default function CRM() {
                             value={field.value || ""}
                             onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                             data-testid="opportunity-amount"
+                            onKeyDown={(e)=>e.stopPropagation()}
+                            onKeyUp={(e)=>e.stopPropagation()}
                           />
                         </FormControl>
                         <FormMessage />
@@ -628,6 +630,8 @@ export default function CRM() {
                             value={field.value || ""}
                             onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
                             data-testid="opportunity-probability"
+                            onKeyDown={(e)=>e.stopPropagation()}
+                            onKeyUp={(e)=>e.stopPropagation()}
                           />
                         </FormControl>
                         <FormMessage />
@@ -931,6 +935,8 @@ export default function CRM() {
                     placeholder="Cerca sequenze per nome o descrizione..."
                     className="pl-10"
                     data-testid="input-search-cadences"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
               </div>

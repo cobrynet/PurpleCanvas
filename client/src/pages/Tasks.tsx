@@ -536,7 +536,7 @@ export default function Tasks() {
                   <DialogTitle>Crea Nuova Attività</DialogTitle>
                 </DialogHeader>
                 <Form {...taskForm}>
-                  <form onSubmit={taskForm.handleSubmit(onCreateTask)} className="space-y-4">
+                  <form onSubmit={taskForm.handleSubmit(onCreateTask)} className="space-y-4" onKeyDown={(e) => e.stopPropagation()} onKeyUp={(e) => e.stopPropagation()}>
                     <FormField
                       control={taskForm.control}
                       name="title"
@@ -544,7 +544,7 @@ export default function Tasks() {
                         <FormItem>
                           <FormLabel>Titolo</FormLabel>
                           <FormControl>
-                            <Input {...field} data-testid="task-title-input" />
+                            <Input {...field} data-testid="task-title-input" onKeyDown={(e) => e.stopPropagation()} onKeyUp={(e) => e.stopPropagation()} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -607,7 +607,7 @@ export default function Tasks() {
                         <FormItem>
                           <FormLabel>Sottotipo (opzionale)</FormLabel>
                           <FormControl>
-                            <Input {...field} value={field.value || ""} data-testid="task-subtype-input" />
+                            <Input {...field} value={field.value || ""} data-testid="task-subtype-input" onKeyDown={(e) => e.stopPropagation()} onKeyUp={(e) => e.stopPropagation()} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

@@ -250,7 +250,7 @@ export default function OfflineActivities() {
                 <DialogTitle>Crea nuova attività offline</DialogTitle>
               </DialogHeader>
               
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
                 {/* Titolo */}
                 <div className="space-y-2">
                   <Label htmlFor="title" className="flex items-center space-x-2">
@@ -264,6 +264,8 @@ export default function OfflineActivities() {
                     onChange={(e) => setActivityForm(prev => ({ ...prev, title: e.target.value }))}
                     data-testid="activity-title-input"
                     required
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 
@@ -300,6 +302,8 @@ export default function OfflineActivities() {
                     onChange={(e) => setActivityForm(prev => ({ ...prev, activityDate: e.target.value }))}
                     data-testid="activity-date-input"
                     required
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 
@@ -318,6 +322,8 @@ export default function OfflineActivities() {
                     data-testid="activity-budget-input"
                     min="0"
                     step="100"
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 
@@ -331,6 +337,8 @@ export default function OfflineActivities() {
                     onChange={(e) => setActivityForm(prev => ({ ...prev, description: e.target.value }))}
                     data-testid="activity-description-input"
                     rows={4}
+                    onKeyDown={(e)=>e.stopPropagation()}
+                    onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
 

@@ -138,7 +138,7 @@ function QuickBuyModal({ service, open, onOpenChange }: {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
           {/* Service Summary */}
           <Card>
             <CardContent className="p-4">
@@ -185,6 +185,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
                   placeholder="Il tuo nome"
                   required
                   data-testid="input-contact-name"
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
               <div>
@@ -197,6 +199,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
                   placeholder="tua@email.com"
                   required
                   data-testid="input-contact-email"
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
             </div>
@@ -217,6 +221,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
                   value={quantity}
                   onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   data-testid="input-quantity"
+                  onKeyDown={(e)=>e.stopPropagation()}
+                  onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
               
@@ -246,6 +252,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
                 placeholder="Specifica dettagli del progetto, preferenze, scadenze..."
                 rows={3}
                 data-testid="textarea-notes"
+                onKeyDown={(e)=>e.stopPropagation()}
+                onKeyUp={(e)=>e.stopPropagation()}
               />
             </div>
           </div>

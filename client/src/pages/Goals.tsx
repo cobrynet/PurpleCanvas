@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Target, Users, DollarSign, Megaphone, Trash2 } from "lucide-react";
+import { Target, Users, DollarSign, Megaphone, Trash2, FileText, Download, Loader2 } from "lucide-react";
 
 export default function Goals() {
   const { user, isAuthenticated } = useAuth();
@@ -86,6 +86,70 @@ export default function Goals() {
       });
     },
   });
+
+  // Generate AI strategy and PDF mutation
+  const generateStrategyPdfMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      // First generate AI plan
+      const aiPlanResponse = await apiRequest("POST", `/api/goals/${goalId}/ai-plan`, {});
+      const aiPlanResult = await aiPlanResponse.json();
+      
+      // Then generate PDF
+      const pdfResponse = await apiRequest("POST", `/api/goals/${goalId}/strategy-pdf`, {});
+      const pdfResult = await pdfResponse.json();
+      
+      return pdfResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      
+      toast({
+        title: "Piano strategico generato!",
+        description: "Il PDF è stato creato con successo. Clicca 'Scarica Piano' per scaricarlo.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error?.message || "Impossibile generare il piano strategico.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Download PDF helper function
+  const downloadStrategyPdf = async (goalId: string) => {
+    try {
+      const response = await fetch(`/api/goals/${goalId}/strategy.pdf`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error("Impossibile scaricare il PDF");
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `piano-strategico-${goalId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Download completato!",
+        description: "Il piano strategico è stato scaricato.",
+      });
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile scaricare il PDF.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Create goals mutation
   const createGoalsMutation = useMutation({
@@ -220,6 +284,37 @@ export default function Goals() {
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <Badge className="bg-green-500">Attivi</Badge>
+                  {goal.strategyPdfUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadStrategyPdf(goal.id)}
+                      data-testid="button-download-strategy"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Scarica Piano
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => generateStrategyPdfMutation.mutate(goal.id)}
+                      disabled={generateStrategyPdfMutation.isPending}
+                      data-testid="button-generate-strategy"
+                    >
+                      {generateStrategyPdfMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generazione...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Genera Piano AI
+                        </>
+                      )}
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     size="sm"

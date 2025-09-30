@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CheckSquare, Plus, Filter, Calendar, List, Kanban, MoreHorizontal, Clock, User } from "lucide-react";
+import { CheckSquare, Plus, Filter, Calendar, List, Kanban, MoreHorizontal, Clock, User, Eye, Edit, Save, X, Loader2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMarketingTaskSchema } from "@shared/schema";
+import { insertMarketingTaskSchema, updateMarketingTaskSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,11 @@ export default function Tasks() {
   // State for filters
   const [goalIdFilter, setGoalIdFilter] = useState<string | null>(goalIdParam);
   const [moduleFilter, setModuleFilter] = useState<string | null>(moduleParam);
+
+  // State for task detail dialog
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -103,6 +108,51 @@ export default function Tasks() {
       toast({
         title: "Error",
         description: "Errore nella creazione dell'attività",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fetch single task mutation
+  const fetchTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      const response = await apiRequest("GET", `/api/tasks/${taskId}`, null);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setSelectedTask(data);
+      setIsDetailDialogOpen(true);
+      setIsEditMode(false);
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare i dettagli dell'attività",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update task mutation
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, updates }: { taskId: string; updates: z.infer<typeof updateMarketingTaskSchema> }) => {
+      const response = await apiRequest("PATCH", `/api/tasks/${taskId}`, updates);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Successo",
+        description: "Attività aggiornata con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      setIsEditMode(false);
+      setIsDetailDialogOpen(false);
+      setSelectedTask(null);
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare l'attività",
         variant: "destructive",
       });
     },
@@ -276,8 +326,14 @@ export default function Tasks() {
                   >
                     {getStatusText(task.status)}
                   </Badge>
-                  <Button variant="ghost" size="sm" className="p-1" data-testid={`task-menu-${task.id}`}>
-                    <MoreHorizontal className="w-4 h-4" />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="p-1" 
+                    onClick={() => fetchTaskMutation.mutate(task.id)}
+                    data-testid={`task-menu-${task.id}`}
+                  >
+                    <Eye className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -317,7 +373,12 @@ export default function Tasks() {
             </CardHeader>
             <CardContent className="space-y-2">
               {(tasksByStatus[column.key] || []).map((task: any) => (
-                <Card key={task.id} className="bg-white shadow-sm" data-testid={`kanban-task-${task.id}`}>
+                <Card 
+                  key={task.id} 
+                  className="bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow" 
+                  onClick={() => fetchTaskMutation.mutate(task.id)}
+                  data-testid={`kanban-task-${task.id}`}
+                >
                   <CardContent className="p-3">
                     <p className="font-medium text-sm mb-2" data-testid={`kanban-task-title-${task.id}`}>
                       {task.title}
@@ -704,6 +765,251 @@ export default function Tasks() {
             </Dialog>
           </div>
         </div>
+
+        {/* Task Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle>Dettagli Attività</DialogTitle>
+                {!isEditMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditMode(true)}
+                    data-testid="edit-task-button"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Modifica
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditMode(false)}
+                    data-testid="cancel-edit-button"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Annulla
+                  </Button>
+                )}
+              </div>
+            </DialogHeader>
+            
+            {selectedTask && (
+              <div className="space-y-4">
+                {!isEditMode ? (
+                  <>
+                    {/* View Mode */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground mb-1">Titolo</h3>
+                      <p className="text-base" data-testid="view-task-title">{selectedTask.title}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-1">Tipo</h3>
+                        <p data-testid="view-task-type">{selectedTask.type}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-1">Priorità</h3>
+                        <Badge className={getPriorityColor(selectedTask.priority)} data-testid="view-task-priority">
+                          {selectedTask.priority}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-1">Stato</h3>
+                        <Badge className={getStatusColor(selectedTask.status)} data-testid="view-task-status">
+                          {getStatusText(selectedTask.status)}
+                        </Badge>
+                      </div>
+                      {selectedTask.dueAt && (
+                        <div>
+                          <h3 className="text-sm font-semibold text-muted-foreground mb-1">Scadenza</h3>
+                          <p data-testid="view-task-duedate">
+                            {new Date(selectedTask.dueAt).toLocaleDateString('it-IT')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedTask.description && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-1">Descrizione</h3>
+                        <p className="whitespace-pre-wrap text-sm" data-testid="view-task-description">
+                          {selectedTask.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedTask.caption && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-1">Caption Social</h3>
+                        <p className="whitespace-pre-wrap text-sm" data-testid="view-task-caption">
+                          {selectedTask.caption}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedTask.postType && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-1">Tipo Post</h3>
+                        <Badge variant="secondary" data-testid="view-task-posttype">
+                          {selectedTask.postType}
+                        </Badge>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Edit Mode */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-semibold mb-1 block">Titolo</label>
+                        <Input
+                          value={selectedTask.title || ""}
+                          onChange={(e) => setSelectedTask({ ...selectedTask, title: e.target.value })}
+                          data-testid="edit-task-title"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-semibold mb-1 block">Tipo</label>
+                          <Select
+                            value={selectedTask.type || ""}
+                            onValueChange={(value) => setSelectedTask({ ...selectedTask, type: value })}
+                          >
+                            <SelectTrigger data-testid="edit-task-type">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="general">Generale</SelectItem>
+                              <SelectItem value="marketing">Marketing</SelectItem>
+                              <SelectItem value="sales">Commerciale</SelectItem>
+                              <SelectItem value="content">Contenuto</SelectItem>
+                              <SelectItem value="design">Design</SelectItem>
+                              <SelectItem value="development">Sviluppo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-sm font-semibold mb-1 block">Priorità</label>
+                          <Select
+                            value={selectedTask.priority || ""}
+                            onValueChange={(value) => setSelectedTask({ ...selectedTask, priority: value })}
+                          >
+                            <SelectTrigger data-testid="edit-task-priority">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="P0">P0 - Critica</SelectItem>
+                              <SelectItem value="P1">P1 - Alta</SelectItem>
+                              <SelectItem value="P2">P2 - Media</SelectItem>
+                              <SelectItem value="P3">P3 - Bassa</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold mb-1 block">Stato</label>
+                        <Select
+                          value={selectedTask.status || ""}
+                          onValueChange={(value) => setSelectedTask({ ...selectedTask, status: value })}
+                        >
+                          <SelectTrigger data-testid="edit-task-status">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="BACKLOG">Backlog</SelectItem>
+                            <SelectItem value="IN_PROGRESS">In Corso</SelectItem>
+                            <SelectItem value="IN_REVIEW">In Review</SelectItem>
+                            <SelectItem value="APPROVED">Approvato</SelectItem>
+                            <SelectItem value="DONE">Fatto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold mb-1 block">Descrizione</label>
+                        <Textarea
+                          value={selectedTask.description || ""}
+                          onChange={(e) => setSelectedTask({ ...selectedTask, description: e.target.value })}
+                          rows={4}
+                          data-testid="edit-task-description"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold mb-1 block">Caption Social (opzionale)</label>
+                        <Textarea
+                          value={selectedTask.caption || ""}
+                          onChange={(e) => setSelectedTask({ ...selectedTask, caption: e.target.value })}
+                          rows={3}
+                          placeholder="Caption per post social..."
+                          data-testid="edit-task-caption"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-semibold mb-1 block">Tipo Post (opzionale)</label>
+                        <Select
+                          value={selectedTask.postType || ""}
+                          onValueChange={(value) => setSelectedTask({ ...selectedTask, postType: value })}
+                        >
+                          <SelectTrigger data-testid="edit-task-posttype">
+                            <SelectValue placeholder="Seleziona tipo post" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="foto">Foto</SelectItem>
+                            <SelectItem value="video">Video</SelectItem>
+                            <SelectItem value="carosello">Carosello</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Button
+                        onClick={() => {
+                          updateTaskMutation.mutate({
+                            taskId: selectedTask.id,
+                            updates: {
+                              title: selectedTask.title,
+                              type: selectedTask.type,
+                              priority: selectedTask.priority,
+                              status: selectedTask.status,
+                              description: selectedTask.description,
+                              caption: selectedTask.caption,
+                              postType: selectedTask.postType,
+                            }
+                          });
+                        }}
+                        disabled={updateTaskMutation.isPending}
+                        className="w-full"
+                        data-testid="save-task-button"
+                      >
+                        {updateTaskMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Salvataggio...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Salva Modifiche
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Tasks Content */}
         {tasksLoading ? (

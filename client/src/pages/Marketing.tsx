@@ -430,7 +430,7 @@ function CampagneSection() {
     data: marketingTasks = [], 
     isLoading: tasksLoading 
   } = useQuery({
-    queryKey: ["/api/organizations", currentOrg?.id, "tasks"],
+    queryKey: ["/api/tasks"],
     enabled: !!currentOrg?.id && isAuthenticated && hasMarketingAccess,
     retry: false,
   });
@@ -442,7 +442,7 @@ function CampagneSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketing/campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
         title: "Campagna ADV creata!",
         description: "La campagna pubblicitaria è stata creata con successo.",
@@ -475,7 +475,7 @@ function CampagneSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/marketing/campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
         title: "Campagna aggiornata!",
         description: "La campagna pubblicitaria è stata aggiornata con successo.",

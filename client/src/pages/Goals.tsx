@@ -116,9 +116,7 @@ export default function Goals() {
           
           // Invalidate after successful task generation - use correct query key!
           queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
-          if (currentOrg?.id) {
-            queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg.id, "tasks"] });
-          }
+          queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
           
           toast({
             title: "Attività generate!",

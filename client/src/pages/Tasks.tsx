@@ -70,7 +70,7 @@ export default function Tasks() {
     isLoading: tasksLoading,
     error: tasksError 
   } = useQuery({
-    queryKey: ["/api/organizations", currentOrg?.id, "tasks"],
+    queryKey: ["/api/tasks"],
     enabled: !!currentOrg?.id && isAuthenticated && hasTaskAccess,
     retry: false,
   });
@@ -85,7 +85,7 @@ export default function Tasks() {
         title: "Success",
         description: "Attività creata con successo",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg?.id, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       taskForm.reset();
     },
     onError: (error) => {

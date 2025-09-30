@@ -23,6 +23,7 @@ import { Link } from "wouter";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import type { BusinessGoal } from "@shared/schema";
 
 // Post Organici Section Component
 function PostOrganiciSection() {
@@ -1192,6 +1193,12 @@ export default function Marketing() {
   const hasMarketingAccess = currentMembership && 
     ['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(currentMembership.role);
 
+  // Fetch active goal for the organization
+  const { data: activeGoal } = useQuery<BusinessGoal | null>({
+    queryKey: ['/api/goals/active'],
+    enabled: !!currentOrg?.id && isAuthenticated,
+  });
+
   // Handle auth redirects
   useEffect(() => {
     if (!isAuthenticated && !authLoading) {
@@ -1232,20 +1239,36 @@ export default function Marketing() {
       <div data-testid="marketing-content">
         {/* Marketing Navigation Tabs */}
         <Tabs defaultValue="overview" className="mb-6">
-          <TabsList className="grid w-fit grid-cols-4" data-testid="marketing-tabs">
-            <TabsTrigger value="overview" data-testid="tab-overview">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="post-organici" data-testid="tab-post-organici">
-              Post Organici
-            </TabsTrigger>
-            <TabsTrigger value="campagne" data-testid="tab-campagne">
-              Campagne
-            </TabsTrigger>
-            <TabsTrigger value="offline" data-testid="tab-offline">
-              Offline
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="grid w-fit grid-cols-4" data-testid="marketing-tabs">
+              <TabsTrigger value="overview" data-testid="tab-overview">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="post-organici" data-testid="tab-post-organici">
+                Post Organici
+              </TabsTrigger>
+              <TabsTrigger value="campagne" data-testid="tab-campagne">
+                Campagne
+              </TabsTrigger>
+              <TabsTrigger value="offline" data-testid="tab-offline">
+                Offline
+              </TabsTrigger>
+            </TabsList>
+            
+            {activeGoal && (
+              <Link href={`/tasks?goalId=${activeGoal.id}&module=marketing`}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2"
+                  data-testid="button-activities-marketing"
+                >
+                  <CheckSquare className="h-4 w-4" />
+                  Attività
+                </Button>
+              </Link>
+            )}
+          </div>
           
           <TabsContent value="overview">
             <div className="text-center py-8">

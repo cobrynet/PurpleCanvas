@@ -52,52 +52,50 @@
 }
 
 .dark {
-  --background: hsl(270, 80%, 4%);
+  --background: hsl(280, 40%, 12%);
   --foreground: hsl(0, 0%, 98%);
-  --card: hsl(270, 50%, 8%);
+  --card: hsl(280, 35%, 18%);
   --card-foreground: hsl(0, 0%, 98%);
-  --popover: hsl(270, 50%, 6%);
+  --popover: hsl(280, 35%, 16%);
   --popover-foreground: hsl(0, 0%, 98%);
-  --primary: hsl(321, 85%, 60%);
+  --primary: hsl(321, 70%, 55%);
   --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(280, 70%, 50%);
+  --secondary: hsl(280, 45%, 35%);
   --secondary-foreground: hsl(0, 0%, 100%);
-  --muted: hsl(270, 40%, 15%);
+  --muted: hsl(280, 30%, 25%);
   --muted-foreground: hsl(0, 0%, 75%);
-  --accent: hsl(321, 85%, 60%);
+  --accent: hsl(321, 70%, 55%);
   --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84%, 65%);
   --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(280, 60%, 20%);
-  --input: hsl(270, 50%, 10%);
-  --ring: hsl(321, 85%, 60%);
-  --chart-1: hsl(321, 85%, 60%);
+  --border: hsl(280, 30%, 30%);
+  --input: hsl(280, 35%, 20%);
+  --ring: hsl(321, 70%, 55%);
+  --chart-1: hsl(321, 70%, 55%);
   --chart-2: hsl(159, 100%, 40%);
   --chart-3: hsl(42, 92%, 60%);
   --chart-4: hsl(147, 78%, 45%);
   --chart-5: hsl(341, 75%, 55%);
-  --sidebar: hsl(270, 80%, 6%);
+  --sidebar: hsl(280, 50%, 15%);
   --sidebar-foreground: hsl(0, 0%, 98%);
-  --sidebar-primary: hsl(321, 85%, 60%);
+  --sidebar-primary: hsl(321, 70%, 55%);
   --sidebar-primary-foreground: hsl(0, 0%, 100%);
-  --sidebar-accent: hsl(280, 70%, 40%);
+  --sidebar-accent: hsl(280, 45%, 35%);
   --sidebar-accent-foreground: hsl(0, 0%, 100%);
-  --sidebar-border: hsl(321, 85%, 60%);
-  --sidebar-ring: hsl(321, 85%, 60%);
+  --sidebar-border: hsl(280, 30%, 30%);
+  --sidebar-ring: hsl(321, 70%, 55%);
   --font-sans: "Inter", sans-serif;
   --font-serif: "Georgia", serif;
   --font-mono: "JetBrains Mono", monospace;
   --radius: 1rem;
-  --shadow-neon-magenta: 0 0 20px hsl(321 85 60 / 0.5), 0 0 40px hsl(321 85 60 / 0.3);
-  --shadow-neon-violet: 0 0 20px hsl(280 70 50 / 0.5), 0 0 40px hsl(280 70 50 / 0.3);
-  --shadow-2xs: 0px 1px 2px 0px hsl(321 85 60 / 0.2);
-  --shadow-xs: 0px 1px 2px 0px hsl(321 85 60 / 0.2);
-  --shadow-sm: 0px 1px 3px 0px hsl(321 85 60 / 0.3), 0px 1px 2px -1px hsl(321 85 60 / 0.2);
-  --shadow: 0px 1px 3px 0px hsl(321 85 60 / 0.3), 0px 1px 2px -1px hsl(321 85 60 / 0.2);
-  --shadow-md: 0px 4px 6px -1px hsl(321 85 60 / 0.3), 0px 2px 4px -2px hsl(321 85 60 / 0.2);
-  --shadow-lg: 0px 10px 15px -3px hsl(321 85 60 / 0.35), 0px 4px 6px -4px hsl(321 85 60 / 0.3);
-  --shadow-xl: 0px 20px 25px -5px hsl(321 85 60 / 0.35), 0px 8px 10px -6px hsl(321 85 60 / 0.3);
-  --shadow-2xl: 0px 25px 50px -12px hsl(321 85 60 / 0.4);
+  --shadow-2xs: 0px 1px 2px 0px hsl(321 70 55 / 0.15);
+  --shadow-xs: 0px 1px 2px 0px hsl(321 70 55 / 0.15);
+  --shadow-sm: 0px 1px 3px 0px hsl(321 70 55 / 0.2), 0px 1px 2px -1px hsl(321 70 55 / 0.15);
+  --shadow: 0px 1px 3px 0px hsl(321 70 55 / 0.2), 0px 1px 2px -1px hsl(321 70 55 / 0.15);
+  --shadow-md: 0px 4px 6px -1px hsl(321 70 55 / 0.2), 0px 2px 4px -2px hsl(321 70 55 / 0.15);
+  --shadow-lg: 0px 10px 15px -3px hsl(321 70 55 / 0.25), 0px 4px 6px -4px hsl(321 70 55 / 0.2);
+  --shadow-xl: 0px 20px 25px -5px hsl(321 70 55 / 0.25), 0px 8px 10px -6px hsl(321 70 55 / 0.2);
+  --shadow-2xl: 0px 25px 50px -12px hsl(321 70 55 / 0.35);
 }
 
 @layer base {
@@ -162,30 +160,5 @@
   
   .theme-text-muted {
     @apply text-muted-foreground;
-  }
-  
-  .glass-card {
-    @apply bg-card/40 backdrop-blur-xl border border-primary/30 rounded-2xl shadow-2xl;
-  }
-  
-  .neon-border {
-    @apply border-2 border-primary;
-    box-shadow: var(--shadow-neon-magenta);
-  }
-  
-  .neon-glow {
-    box-shadow: var(--shadow-neon-magenta);
-  }
-  
-  .neon-glow-violet {
-    box-shadow: var(--shadow-neon-violet);
-  }
-  
-  .gradient-neon-bg {
-    background: linear-gradient(135deg, hsl(270, 80%, 4%) 0%, hsl(280, 70%, 15%) 50%, hsl(321, 85%, 20%) 100%);
-  }
-  
-  .gradient-radial-neon {
-    background: radial-gradient(ellipse at top, hsl(321, 85%, 20%) 0%, hsl(270, 80%, 4%) 70%);
   }
 }

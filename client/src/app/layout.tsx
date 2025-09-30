@@ -59,13 +59,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen gradient-radial-neon">
+    <div className="min-h-screen bg-background">
       {/* Sidebar Sinistra */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 gradient-neon-bg border-r-2 border-primary neon-glow">
+      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-xl">
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center border-b border-primary/30 px-6">
-            <h1 className="text-xl font-bold text-white">
+          <div className="flex h-16 items-center border-b border-sidebar-border px-6">
+            <h1 className="text-xl font-bold text-sidebar-foreground">
               Stratikey
             </h1>
           </div>
@@ -80,10 +80,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className={`w-full justify-start text-left font-normal h-11 transition-all rounded-xl border ${
+                  className={`w-full justify-start text-left font-normal h-11 transition-all ${
                     isActive
-                      ? "bg-primary/20 text-white border-primary/50 neon-glow"
-                      : "border-transparent text-white/70 hover:bg-primary/10 hover:text-white hover:border-primary/30"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                   }`}
                   data-testid={`sidebar-${item.id}`}
                   asChild
@@ -102,7 +102,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content Area */}
       <div className="pl-64">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 glass-card border-b border-primary/20">
+        <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <div className="flex h-16 items-center justify-end px-6">
             <div className="flex items-center space-x-4">
               {/* Organization Selector */}

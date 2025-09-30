@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Target, Users, DollarSign, Megaphone } from "lucide-react";
 
@@ -34,7 +35,9 @@ export default function Goals() {
     fairs: "",
     digitalChannels: "",
     adInvestments: "",
-    geoArea: ""
+    geoArea: "",
+    sector: "",
+    preferredChannels: [] as string[]
   });
 
   const [allocations, setAllocations] = useState<Array<{ category: string; amount: string; notes: string }>>([]);
@@ -91,6 +94,8 @@ export default function Goals() {
       digitalChannels: form.digitalChannels || null,
       adInvestments: form.adInvestments || null,
       geoArea: form.geoArea || null,
+      sector: form.sector || null,
+      preferredChannels: form.preferredChannels.length > 0 ? form.preferredChannels : null,
       allocations: allocations
         .filter(a => a.category && a.amount)
         .map(a => ({
@@ -178,6 +183,24 @@ export default function Goals() {
                 <div>
                   <h3 className="font-semibold mb-2">Area Geografica</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">{goal.geoArea}</p>
+                </div>
+              )}
+
+              {goal.sector && (
+                <div>
+                  <h3 className="font-semibold mb-2">Settore di Attività</h3>
+                  <p className="text-muted-foreground">{goal.sector}</p>
+                </div>
+              )}
+
+              {goal.preferredChannels && goal.preferredChannels.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2">Canali Preferiti per Marketing</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {goal.preferredChannels.map((channel: string) => (
+                      <Badge key={channel} variant="secondary">{channel}</Badge>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -350,6 +373,60 @@ export default function Goals() {
                   data-testid="geo-area-input"
                   rows={3}
                 />
+              </div>
+
+              {/* Settore */}
+              <div className="space-y-2">
+                <Label htmlFor="sector">Settore di attività</Label>
+                <Input
+                  id="sector"
+                  placeholder="Es: Tecnologia, E-commerce, Servizi, Manifatturiero..."
+                  value={form.sector}
+                  onChange={(e) => setForm(prev => ({ ...prev, sector: e.target.value }))}
+                  data-testid="sector-input"
+                />
+              </div>
+
+              {/* Canali Preferiti */}
+              <div className="space-y-3">
+                <Label>Canali preferiti per marketing</Label>
+                <div className="space-y-2">
+                  {[
+                    { value: "Social Media", label: "Social Media (Facebook, Instagram, LinkedIn)" },
+                    { value: "Email Marketing", label: "Email Marketing" },
+                    { value: "Google Ads", label: "Google Ads" },
+                    { value: "SEO", label: "SEO / Posizionamento organico" },
+                    { value: "Content Marketing", label: "Content Marketing / Blog" },
+                    { value: "Eventi e Fiere", label: "Eventi e Fiere" }
+                  ].map((channel) => (
+                    <div key={channel.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`channel-${channel.value}`}
+                        checked={form.preferredChannels.includes(channel.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setForm(prev => ({
+                              ...prev,
+                              preferredChannels: [...prev.preferredChannels, channel.value]
+                            }));
+                          } else {
+                            setForm(prev => ({
+                              ...prev,
+                              preferredChannels: prev.preferredChannels.filter(c => c !== channel.value)
+                            }));
+                          }
+                        }}
+                        data-testid={`channel-checkbox-${channel.value}`}
+                      />
+                      <label
+                        htmlFor={`channel-${channel.value}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {channel.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Allocazioni Budget */}

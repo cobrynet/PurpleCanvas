@@ -318,6 +318,8 @@ export const businessGoals = pgTable("business_goals", {
   digitalChannels: text("digital_channels"),
   adInvestments: text("ad_investments"),
   geoArea: text("geo_area"),
+  sector: text("sector"),
+  preferredChannels: text("preferred_channels").array(),
   periodicity: periodicityEnum("periodicity").notNull(),
   objectives: text("objectives").notNull(),
   totalBudget: integer("total_budget").notNull(), // in centesimi

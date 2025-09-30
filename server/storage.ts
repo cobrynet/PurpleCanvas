@@ -86,6 +86,7 @@ export interface IStorage {
   getBusinessGoals(orgId: string): Promise<BusinessGoal[]>;
   getActiveGoal(orgId: string): Promise<BusinessGoal | undefined>;
   deleteBusinessGoal(goalId: string): Promise<void>;
+  updateBusinessGoal(goalId: string, updates: Partial<BusinessGoal>): Promise<BusinessGoal | undefined>;
   createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment>;
   createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation>;
   createOrUpdateGoalPlan(plan: InsertGoalPlan): Promise<GoalPlan>;
@@ -334,6 +335,15 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(businessGoals)
       .where(eq(businessGoals.id, goalId));
+  }
+
+  async updateBusinessGoal(goalId: string, updates: Partial<BusinessGoal>): Promise<BusinessGoal | undefined> {
+    const [updated] = await db
+      .update(businessGoals)
+      .set(updates)
+      .where(eq(businessGoals.id, goalId))
+      .returning();
+    return updated;
   }
 
   async createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment> {

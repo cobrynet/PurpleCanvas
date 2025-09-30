@@ -1279,6 +1279,11 @@ Genera un piano coerente e realistico in formato JSON.`;
         version: newVersion,
       });
 
+      // Save aiPlan to the goal itself
+      await storage.updateBusinessGoal(goalId, {
+        aiPlan: validatedSpec,
+      });
+
       res.json({ ok: true, planId: plan.id, spec: validatedSpec });
     } catch (error: any) {
       console.error("Error generating AI plan:", error);
@@ -1293,6 +1298,197 @@ Genera un piano coerente e realistico in formato JSON.`;
       
       res.status(500).json({ 
         message: "Failed to generate AI plan",
+        error: error.message 
+      });
+    }
+  });
+
+  // Generate strategy PDF
+  app.post('/api/goals/:goalId/strategy-pdf', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { goalId } = req.params;
+
+      // Get the goal
+      const goals = await storage.getBusinessGoals(orgId);
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+
+      // Verify multi-tenant security
+      if (goal.organizationId !== orgId) {
+        return res.status(403).json({ message: "No access to this goal" });
+      }
+
+      // Get aiPlan from goal or generate it first
+      let aiPlan = goal.aiPlan as any;
+      if (!aiPlan) {
+        return res.status(400).json({ 
+          message: "AI plan not found. Please generate AI plan first using POST /api/goals/:goalId/ai-plan" 
+        });
+      }
+
+      // Import PDFKit
+      const PDFDocument = (await import('pdfkit')).default;
+      
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: 'A4',
+        margins: { top: 50, bottom: 50, left: 50, right: 50 }
+      });
+
+      // Collect PDF buffer
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+      // Generate PDF content
+      doc.fontSize(24).font('Helvetica-Bold').text('Strategia di Marketing e Vendita', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).font('Helvetica').text(`Generata il: ${new Date().toLocaleDateString('it-IT')}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Executive Summary
+      doc.fontSize(18).font('Helvetica-Bold').text('Obiettivi Aziendali');
+      doc.moveDown();
+      doc.fontSize(11).font('Helvetica').text(goal.objectives || 'Non specificato');
+      doc.moveDown(1.5);
+
+      // Strategy Overview
+      doc.fontSize(18).font('Helvetica-Bold').text('Panoramica Strategica');
+      doc.moveDown();
+      doc.fontSize(14).font('Helvetica-Bold').text(`Periodicità: ${aiPlan.periodicity}`);
+      doc.fontSize(11).font('Helvetica').text(`Durata: ${aiPlan.durationDays} giorni`);
+      doc.moveDown(1.5);
+
+      // Marketing Strategy
+      doc.fontSize(18).font('Helvetica-Bold').text('Strategia Marketing');
+      doc.moveDown();
+      if (aiPlan.marketing) {
+        doc.fontSize(11).font('Helvetica')
+          .text(`• Post organici settimanali: ${aiPlan.marketing.organicPostsPerWeek}`)
+          .text(`• Canali: ${aiPlan.marketing.channels?.join(', ') || 'Non specificati'}`)
+          .text(`• Pubblicità social: ${aiPlan.marketing.hasSocialAds ? 'Sì' : 'No'}`);
+      }
+      doc.moveDown(1.5);
+
+      // Offline Strategy
+      doc.fontSize(18).font('Helvetica-Bold').text('Attività Offline');
+      doc.moveDown();
+      if (aiPlan.offline) {
+        doc.fontSize(11).font('Helvetica')
+          .text(`• Budget fiere: €${(aiPlan.offline.fairsBudgetCents / 100).toFixed(2)}`)
+          .text(`• Partecipazione fiere: ${aiPlan.offline.hasFairs ? 'Sì' : 'No'}`);
+      }
+      doc.moveDown(1.5);
+
+      // Sales Strategy
+      doc.fontSize(18).font('Helvetica-Bold').text('Strategia Commerciale');
+      doc.moveDown();
+      if (aiPlan.sales) {
+        doc.fontSize(11).font('Helvetica')
+          .text(`• Cadenza attività: ${aiPlan.sales.cadence || 'Non specificata'}`)
+          .text(`• Target lead mensili: ${aiPlan.sales.targetLeadsPerMonth || 0}`);
+      }
+      doc.moveDown(1.5);
+
+      // Notes and Recommendations
+      if (aiPlan.notes) {
+        doc.fontSize(18).font('Helvetica-Bold').text('Note e Raccomandazioni');
+        doc.moveDown();
+        doc.fontSize(11).font('Helvetica').text(aiPlan.notes);
+      }
+
+      // Finalize PDF
+      doc.end();
+
+      // Wait for PDF generation to complete
+      await new Promise((resolve) => doc.on('end', resolve));
+      const pdfBuffer = Buffer.concat(chunks);
+
+      // Upload to object storage
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      // Generate unique filename
+      const filename = `strategy-${goalId}-${Date.now()}.pdf`;
+      const { uploadUrl, publicUrl } = await objectStorageService.getObjectEntityUploadURL(filename, orgId);
+
+      // Upload PDF to object storage
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+        body: pdfBuffer,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload PDF: ${uploadResponse.statusText}`);
+      }
+
+      // Update goal with PDF URL
+      await storage.updateBusinessGoal(goalId, {
+        strategyPdfUrl: publicUrl,
+        strategyGeneratedAt: new Date(),
+      });
+
+      res.json({ 
+        ok: true, 
+        url: publicUrl,
+        generatedAt: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error generating strategy PDF:", error);
+      res.status(500).json({ 
+        message: "Failed to generate strategy PDF",
+        error: error.message 
+      });
+    }
+  });
+
+  // Download strategy PDF
+  app.get('/api/goals/:goalId/strategy.pdf', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { goalId } = req.params;
+
+      // Get the goal
+      const goals = await storage.getBusinessGoals(orgId);
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+
+      // Verify multi-tenant security
+      if (goal.organizationId !== orgId) {
+        return res.status(403).json({ message: "No access to this goal" });
+      }
+
+      if (!goal.strategyPdfUrl) {
+        return res.status(404).json({ message: "Strategy PDF not generated yet" });
+      }
+
+      // Fetch PDF from object storage
+      const pdfResponse = await fetch(goal.strategyPdfUrl);
+      
+      if (!pdfResponse.ok) {
+        throw new Error(`Failed to fetch PDF: ${pdfResponse.statusText}`);
+      }
+
+      const pdfBuffer = await pdfResponse.arrayBuffer();
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="strategia-${goalId}.pdf"`);
+      res.send(Buffer.from(pdfBuffer));
+    } catch (error: any) {
+      console.error("Error downloading strategy PDF:", error);
+      res.status(500).json({ 
+        message: "Failed to download strategy PDF",
         error: error.message 
       });
     }
@@ -1598,6 +1794,52 @@ Genera un piano coerente e realistico in formato JSON.`;
     } catch (error) {
       console.error("Error fetching tasks:", error);
       res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
+  app.get('/api/tasks/:id', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { id } = req.params;
+      
+      const task = await storage.getMarketingTask(id, orgId);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      res.json(task);
+    } catch (error) {
+      console.error("Error fetching task:", error);
+      res.status(500).json({ message: "Failed to fetch task" });
+    }
+  });
+
+  app.patch('/api/tasks/:id', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { id } = req.params;
+      const membership = req.currentMembership;
+      
+      // Check permissions - only SUPER_ADMIN, ORG_ADMIN, MARKETER, SALES can update tasks
+      if (!['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER', 'SALES'].includes(membership.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Validate updates using updateMarketingTaskSchema
+      const { updateMarketingTaskSchema } = await import('@shared/schema');
+      const updates = updateMarketingTaskSchema.parse(req.body);
+      
+      const updatedTask = await storage.updateMarketingTask(id, orgId, updates);
+      
+      if (!updatedTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
     }
   });
 

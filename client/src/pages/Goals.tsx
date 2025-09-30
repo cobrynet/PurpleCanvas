@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { StableTextarea } from "@/components/StableTextarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -357,18 +358,14 @@ export default function Goals() {
                   <Target className="w-4 h-4" />
                   <span>Obiettivi aziendali *</span>
                 </Label>
-                <Textarea
-                  key="objectives-textarea"
+                <StableTextarea
                   id="objectives"
                   placeholder="Descrivi i principali obiettivi che vuoi raggiungere (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
                   value={goalForm.objectives}
-                  onChange={(e) => handleFieldChange('objectives', e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  onKeyUp={(e) => e.stopPropagation()}
+                  onChange={(value) => handleFieldChange('objectives', value)}
                   data-testid="objectives-input"
                   rows={4}
                   required
-                  autoComplete="off"
                 />
               </div>
 

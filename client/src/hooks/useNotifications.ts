@@ -14,10 +14,10 @@ export interface SendNotificationData {
 }
 
 // Hook per recuperare le notifiche
-export function useNotifications() {
+export function useNotifications(enablePolling = true) {
   return useQuery<NotificationsResponse>({
     queryKey: ['/api/notifications'],
-    refetchInterval: 10000, // Refresh ogni 10 secondi per aggiornare le notifiche
+    refetchInterval: enablePolling ? 30000 : false, // Refresh ogni 30 secondi (disabilitabile)
   });
 }
 

@@ -24,11 +24,11 @@ export function MainLayout({ children, title, icon }: MainLayoutProps) {
   }, [currentOrg]);
 
   return (
-    <div className="flex h-screen" data-testid="main-layout">
+    <div className="flex h-screen bg-background" data-testid="main-layout">
       {/* Sidebar removed - using main sidebar from app/layout.tsx instead */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-background">
         <Header title={title} icon={icon} />
-        <main className="flex-1 p-6 overflow-auto bg-background" data-testid="main-content">
+        <main className="flex-1 p-6 overflow-auto bg-background text-foreground" data-testid="main-content">
           {children}
         </main>
       </div>

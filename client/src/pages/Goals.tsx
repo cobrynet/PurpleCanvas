@@ -54,14 +54,37 @@ export default function Goals() {
     mutationFn: async (goalsData: any) => {
       return await apiRequest("POST", "/api/goals", goalsData);
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       
       toast({
         title: "Obiettivi salvati!",
-        description: `Obiettivi aziendali definiti con successo. ${(data as any)?.generatedTasks || 0} task iniziali creati automaticamente.`,
+        description: "Generazione automatica delle attività in corso...",
       });
+
+      // Automatic task generation
+      const goalId = (data as any)?.goalId;
+      if (goalId) {
+        try {
+          await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
+          
+          queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+          
+          toast({
+            title: "Attività generate!",
+            description: "Attività generate. Vai a Marketing/Commerciale → Attività",
+          });
+        } catch (error) {
+          console.error("Error generating tasks:", error);
+          toast({
+            title: "Errore generazione attività",
+            description: "Obiettivi salvati ma errore nella generazione automatica delle attività.",
+            variant: "destructive",
+          });
+        }
+      }
     },
     onError: (error: any) => {
       toast({

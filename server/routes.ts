@@ -580,7 +580,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/goals', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
-      const goalData = insertBusinessGoalSchema.parse(req.body);
+      const { useAI, ...bodyWithoutUseAI } = req.body;
+      const goalData = insertBusinessGoalSchema.parse(bodyWithoutUseAI);
       
       // Verify user has access to the organization
       const membership = await storage.getUserMembership(userId, goalData.organizationId);
@@ -591,81 +592,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the goal
       const goal = await storage.createBusinessGoal(goalData);
       
-      // Calculate duration based on periodicity
-      const durationDays = {
-        ANNUALE: 365,
-        SEMESTRALE: 180,
-        QUADRIMESTRALE: 120
-      }[goalData.periodicity] || 365;
+      let planId: string;
+      
+      // If useAI is true, use AI to generate the plan
+      if (useAI && process.env.OPENAI_API_KEY) {
+        try {
+          // Import OpenAI and generate AI plan
+          const { default: OpenAI } = await import('openai');
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      // Determine channels from preferredChannels or digitalChannels
-      let channels: string[] = [];
-      if (goalData.preferredChannels && goalData.preferredChannels.length > 0) {
-        channels = goalData.preferredChannels;
-      } else if (goalData.digitalChannels) {
-        // Extract channels from free text
-        const text = goalData.digitalChannels.toLowerCase();
-        if (text.includes('instagram')) channels.push('Instagram');
-        if (text.includes('facebook')) channels.push('Facebook');
-        if (text.includes('linkedin')) channels.push('LinkedIn');
-        if (text.includes('twitter') || text.includes('x.com')) channels.push('Twitter');
+          // Build context for AI
+          const context = {
+            objectives: goal.objectives,
+            periodicity: goal.periodicity,
+            totalBudget: goal.totalBudget,
+            salesPipeline: goal.salesPipeline,
+            fairs: goal.fairs,
+            digitalChannels: goal.digitalChannels,
+            adInvestments: goal.adInvestments,
+            geoArea: goal.geoArea,
+            sector: goal.sector,
+            preferredChannels: goal.preferredChannels,
+          };
+
+          const systemPrompt = `Sei un planner esperto di marketing e sales B2B. 
+Genera un piano annuale/semestrale/quadrimestrale coerente e dettagliato basato sugli obiettivi aziendali forniti.
+
+Il piano deve includere:
+- organicPostsPerWeek (2-4 post): frequenza di pubblicazione organica sui social
+- channels: lista dei canali social da utilizzare
+- hasSocialAds: true se il budget include investimenti pubblicitari social
+- fairsBudgetCents: budget allocato per fiere ed eventi (in centesimi)
+- hasFairs: true se sono previste fiere o eventi
+- salesCadence: cadenza delle attività commerciali (es: "email+call", "call only", "email only")
+- targetLeadsPerMonth: numero target di lead da generare al mese
+
+Rispondi SOLO in formato JSON valido seguendo ESATTAMENTE questa struttura:
+{
+  "periodicity": "ANNUALE" | "SEMESTRALE" | "QUADRIMESTRALE",
+  "durationDays": number (giorni di durata del piano),
+  "marketing": {
+    "organicPostsPerWeek": number (2-4),
+    "channels": string[] (es: ["LinkedIn", "Instagram"]),
+    "hasSocialAds": boolean
+  },
+  "offline": {
+    "fairsBudgetCents": number (in centesimi),
+    "hasFairs": boolean
+  },
+  "sales": {
+    "cadence": string (es: "email+call"),
+    "targetLeadsPerMonth": number
+  },
+  "notes": string (note e raccomandazioni strategiche)
+}`;
+
+          const userPrompt = `Genera un piano marketing e sales B2B basato su questi dati:
+
+Obiettivi: ${context.objectives}
+Periodicità: ${context.periodicity}
+Budget totale: €${(context.totalBudget / 100).toFixed(2)}
+Pipeline commerciale: ${context.salesPipeline || 'Non specificato'}
+Fiere ed eventi: ${context.fairs || 'Non specificati'}
+Canali digitali: ${context.digitalChannels || 'Non specificati'}
+Investimenti pubblicitari: ${context.adInvestments || 'Non specificati'}
+Area geografica: ${context.geoArea || 'Non specificata'}
+Settore: ${context.sector || 'Non specificato'}
+Canali preferiti: ${context.preferredChannels?.join(', ') || 'Non specificati'}
+
+Genera un piano coerente e realistico in formato JSON.`;
+
+          // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            response_format: { type: "json_object" },
+          });
+
+          const aiResponseContent = response.choices[0].message.content;
+          if (!aiResponseContent) {
+            throw new Error("Empty response from OpenAI");
+          }
+
+          const aiGeneratedSpec = JSON.parse(aiResponseContent);
+          const { goalPlanSpecSchema } = await import('@shared/schema');
+          const validatedSpec = goalPlanSpecSchema.parse(aiGeneratedSpec);
+
+          // Create GoalPlan with AI-generated spec
+          const plan = await storage.createOrUpdateGoalPlan({
+            goalId: goal.id,
+            organizationId: goalData.organizationId,
+            spec: validatedSpec,
+            generatedAt: new Date(),
+          });
+          
+          planId = plan.id;
+        } catch (aiError) {
+          console.error("AI generation failed, falling back to manual plan:", aiError);
+          // Fall back to manual plan generation if AI fails
+          const manualPlan = await createManualPlan(goal, goalData, req.body.allocations);
+          planId = manualPlan.id;
+        }
+      } else {
+        // Use manual plan generation (original logic)
+        const manualPlan = await createManualPlan(goal, goalData, req.body.allocations);
+        planId = manualPlan.id;
       }
-
-      // Check if has social ads from allocations or adInvestments
-      let hasSocialAds = false;
-      let fairsBudgetCents = 0;
-      const allocations = req.body.allocations as any[] | undefined;
-      if (allocations && allocations.length > 0) {
-        const socialAdsAlloc = allocations.find((a: any) => a.category === 'SOCIAL_ADS');
-        hasSocialAds = !!socialAdsAlloc;
-        
-        const fairsAlloc = allocations.find((a: any) => a.category === 'FIERE');
-        fairsBudgetCents = fairsAlloc?.amount || 0;
-      } else if (goalData.adInvestments) {
-        hasSocialAds = goalData.adInvestments.toLowerCase().includes('social') || 
-                       goalData.adInvestments.toLowerCase().includes('facebook') ||
-                       goalData.adInvestments.toLowerCase().includes('instagram');
-      }
-
-      const hasFairs = !!goalData.fairs || fairsBudgetCents > 0;
-
-      // Build GoalPlan spec
-      const spec = {
-        periodicity: goalData.periodicity,
-        durationDays,
-        marketing: {
-          organicPostsPerWeek: channels.length > 0 ? 3 : 2,
-          channels,
-          hasSocialAds
-        },
-        offline: {
-          fairsBudgetCents,
-          hasFairs
-        },
-        sales: {
-          cadence: "email+call",
-          targetLeadsPerMonth: 40
-        },
-        notes: goalData.objectives || ""
-      };
-
-      // Create or update GoalPlan
-      const plan = await storage.createOrUpdateGoalPlan({
-        goalId: goal.id,
-        organizationId: goalData.organizationId,
-        spec,
-        generatedAt: new Date(),
-      });
       
       // Generate initial tasks based on goals (mock AI)
       const generatedTasks = await generateInitialTasks(goalData, userId);
       
-      res.json({ ok: true, goalId: goal.id, planId: plan.id });
+      res.json({ ok: true, goalId: goal.id, planId });
     } catch (error) {
       console.error("Error creating goals:", error);
       res.status(500).json({ message: "Failed to create goals" });
     }
   });
+
+  // Helper function for manual plan creation
+  async function createManualPlan(goal: any, goalData: any, allocations: any[] | undefined) {
+    const durationDays = ({
+      ANNUALE: 365,
+      SEMESTRALE: 180,
+      QUADRIMESTRALE: 120
+    } as const)[goalData.periodicity as 'ANNUALE' | 'SEMESTRALE' | 'QUADRIMESTRALE'] || 365;
+
+    let channels: string[] = [];
+    if (goalData.preferredChannels && goalData.preferredChannels.length > 0) {
+      channels = goalData.preferredChannels;
+    } else if (goalData.digitalChannels) {
+      const text = goalData.digitalChannels.toLowerCase();
+      if (text.includes('instagram')) channels.push('Instagram');
+      if (text.includes('facebook')) channels.push('Facebook');
+      if (text.includes('linkedin')) channels.push('LinkedIn');
+      if (text.includes('twitter') || text.includes('x.com')) channels.push('Twitter');
+    }
+
+    let hasSocialAds = false;
+    let fairsBudgetCents = 0;
+    if (allocations && allocations.length > 0) {
+      const socialAdsAlloc = allocations.find((a: any) => a.category === 'SOCIAL_ADS');
+      hasSocialAds = !!socialAdsAlloc;
+      
+      const fairsAlloc = allocations.find((a: any) => a.category === 'FIERE');
+      fairsBudgetCents = fairsAlloc?.amount || 0;
+    } else if (goalData.adInvestments) {
+      hasSocialAds = goalData.adInvestments.toLowerCase().includes('social') || 
+                     goalData.adInvestments.toLowerCase().includes('facebook') ||
+                     goalData.adInvestments.toLowerCase().includes('instagram');
+    }
+
+    const hasFairs = !!goalData.fairs || fairsBudgetCents > 0;
+
+    const spec = {
+      periodicity: goalData.periodicity,
+      durationDays,
+      marketing: {
+        organicPostsPerWeek: channels.length > 0 ? 3 : 2,
+        channels,
+        hasSocialAds
+      },
+      offline: {
+        fairsBudgetCents,
+        hasFairs
+      },
+      sales: {
+        cadence: "email+call",
+        targetLeadsPerMonth: 40
+      },
+      notes: goalData.objectives || ""
+    };
+
+    return await storage.createOrUpdateGoalPlan({
+      goalId: goal.id,
+      organizationId: goalData.organizationId,
+      spec,
+      generatedAt: new Date(),
+    });
+  }
 
   app.get('/api/goals/active', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
@@ -966,6 +1073,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating tasks:", error);
       res.status(500).json({ message: "Failed to generate tasks" });
+    }
+  });
+
+  // AI-powered goal plan generation
+  app.post('/api/goals/:goalId/ai-plan', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { goalId } = req.params;
+
+      // Get the goal
+      const goals = await storage.getBusinessGoals(orgId);
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+
+      // Verify multi-tenant security
+      if (goal.organizationId !== orgId) {
+        return res.status(403).json({ message: "No access to this goal" });
+      }
+
+      // Check if OpenAI API key is available
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ message: "OpenAI API key not configured" });
+      }
+
+      // Import OpenAI
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      // Build context for AI
+      const context = {
+        objectives: goal.objectives,
+        periodicity: goal.periodicity,
+        totalBudget: goal.totalBudget,
+        salesPipeline: goal.salesPipeline,
+        fairs: goal.fairs,
+        digitalChannels: goal.digitalChannels,
+        adInvestments: goal.adInvestments,
+        geoArea: goal.geoArea,
+        sector: goal.sector,
+        preferredChannels: goal.preferredChannels,
+      };
+
+      // System prompt for AI
+      const systemPrompt = `Sei un planner esperto di marketing e sales B2B. 
+Genera un piano annuale/semestrale/quadrimestrale coerente e dettagliato basato sugli obiettivi aziendali forniti.
+
+Il piano deve includere:
+- organicPostsPerWeek (2-4 post): frequenza di pubblicazione organica sui social
+- channels: lista dei canali social da utilizzare
+- hasSocialAds: true se il budget include investimenti pubblicitari social
+- fairsBudgetCents: budget allocato per fiere ed eventi (in centesimi)
+- hasFairs: true se sono previste fiere o eventi
+- salesCadence: cadenza delle attività commerciali (es: "email+call", "call only", "email only")
+- targetLeadsPerMonth: numero target di lead da generare al mese
+- campaign milestones: obiettivi intermedi e milestone del piano
+- report mensili: frequenza dei report di monitoraggio
+
+Rispondi SOLO in formato JSON valido seguendo ESATTAMENTE questa struttura:
+{
+  "periodicity": "ANNUALE" | "SEMESTRALE" | "QUADRIMESTRALE",
+  "durationDays": number (giorni di durata del piano),
+  "marketing": {
+    "organicPostsPerWeek": number (2-4),
+    "channels": string[] (es: ["LinkedIn", "Instagram"]),
+    "hasSocialAds": boolean
+  },
+  "offline": {
+    "fairsBudgetCents": number (in centesimi),
+    "hasFairs": boolean
+  },
+  "sales": {
+    "cadence": string (es: "email+call"),
+    "targetLeadsPerMonth": number
+  },
+  "notes": string (note e raccomandazioni strategiche)
+}`;
+
+      const userPrompt = `Genera un piano marketing e sales B2B basato su questi dati:
+
+Obiettivi: ${context.objectives}
+Periodicità: ${context.periodicity}
+Budget totale: €${(context.totalBudget / 100).toFixed(2)}
+Pipeline commerciale: ${context.salesPipeline || 'Non specificato'}
+Fiere ed eventi: ${context.fairs || 'Non specificati'}
+Canali digitali: ${context.digitalChannels || 'Non specificati'}
+Investimenti pubblicitari: ${context.adInvestments || 'Non specificati'}
+Area geografica: ${context.geoArea || 'Non specificata'}
+Settore: ${context.sector || 'Non specificato'}
+Canali preferiti: ${context.preferredChannels?.join(', ') || 'Non specificati'}
+
+Genera un piano coerente e realistico in formato JSON.`;
+
+      // Call OpenAI
+      // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const aiResponseContent = response.choices[0].message.content;
+      if (!aiResponseContent) {
+        throw new Error("Empty response from OpenAI");
+      }
+
+      // Parse and validate the JSON response
+      const aiGeneratedSpec = JSON.parse(aiResponseContent);
+      
+      // Import schema for validation
+      const { goalPlanSpecSchema } = await import('@shared/schema');
+      const validatedSpec = goalPlanSpecSchema.parse(aiGeneratedSpec);
+
+      // Get existing plan to increment version
+      const existingPlan = await storage.getGoalPlanByGoalId(goalId);
+      const newVersion = existingPlan ? (existingPlan.version || 1) + 1 : 1;
+
+      // Update or create GoalPlan with AI-generated spec
+      const plan = await storage.createOrUpdateGoalPlan({
+        goalId: goal.id,
+        organizationId: goal.organizationId,
+        spec: validatedSpec,
+        generatedAt: new Date(),
+        version: newVersion,
+      });
+
+      res.json({ ok: true, planId: plan.id, spec: validatedSpec });
+    } catch (error: any) {
+      console.error("Error generating AI plan:", error);
+      
+      // Handle specific errors
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid AI response format", 
+          details: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Failed to generate AI plan",
+        error: error.message 
+      });
     }
   });
 

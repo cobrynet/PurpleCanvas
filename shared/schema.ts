@@ -851,3 +851,25 @@ export const organizationSettingsSchema = z.object({
 // Settings types
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type OrganizationSettings = z.infer<typeof organizationSettingsSchema>;
+
+// GoalPlan spec schema for AI generation validation
+export const goalPlanSpecSchema = z.object({
+  periodicity: z.enum(['ANNUALE', 'SEMESTRALE', 'QUADRIMESTRALE']),
+  durationDays: z.number().min(1).max(365),
+  marketing: z.object({
+    organicPostsPerWeek: z.number().min(1).max(7),
+    channels: z.array(z.string()).min(0),
+    hasSocialAds: z.boolean(),
+  }),
+  offline: z.object({
+    fairsBudgetCents: z.number().min(0),
+    hasFairs: z.boolean(),
+  }),
+  sales: z.object({
+    cadence: z.string(),
+    targetLeadsPerMonth: z.number().min(0),
+  }),
+  notes: z.string().optional(),
+});
+
+export type GoalPlanSpec = z.infer<typeof goalPlanSpecSchema>;

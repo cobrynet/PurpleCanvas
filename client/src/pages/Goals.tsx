@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +54,11 @@ export default function Goals() {
     { value: "COMMERCIALE", label: "Commerciale" },
     { value: "ALTRO", label: "Altro" }
   ];
+
+  // Memoized handler to prevent re-renders and focus loss
+  const handleFieldChange = useCallback((field: string, value: string) => {
+    setGoalForm(prev => ({ ...prev, [field]: value }));
+  }, []);
 
   // Check existing goals
   const { 
@@ -357,7 +362,7 @@ export default function Goals() {
                   id="objectives"
                   placeholder="Descrivi i principali obiettivi che vuoi raggiungere (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
                   value={goalForm.objectives}
-                  onChange={(e) => setGoalForm(prev => ({ ...prev, objectives: e.target.value }))}
+                  onChange={(e) => handleFieldChange('objectives', e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
                   onKeyUp={(e) => e.stopPropagation()}
                   data-testid="objectives-input"

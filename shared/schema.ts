@@ -346,6 +346,17 @@ export const budgetAllocations = pgTable("budget_allocations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const goalPlans = pgTable("goal_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  goalId: uuid("goal_id").notNull().unique().references(() => businessGoals.id),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  spec: jsonb("spec").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow(),
+  version: integer("version").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Marketplace tables
 export const services = pgTable("services", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -611,6 +622,12 @@ export const insertBudgetAllocationSchema = createInsertSchema(budgetAllocations
   createdAt: true,
 });
 
+export const insertGoalPlanSchema = createInsertSchema(goalPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertOfflineActivitySchema = createInsertSchema(offlineActivities).omit({
   id: true,
   createdAt: true,
@@ -687,6 +704,8 @@ export type GoalAttachment = typeof goalAttachments.$inferSelect;
 export type InsertGoalAttachment = z.infer<typeof insertGoalAttachmentSchema>;
 export type BudgetAllocation = typeof budgetAllocations.$inferSelect;
 export type InsertBudgetAllocation = z.infer<typeof insertBudgetAllocationSchema>;
+export type GoalPlan = typeof goalPlans.$inferSelect;
+export type InsertGoalPlan = z.infer<typeof insertGoalPlanSchema>;
 export type OfflineActivity = typeof offlineActivities.$inferSelect;
 export type InsertOfflineActivity = z.infer<typeof insertOfflineActivitySchema>;
 export type Notification = typeof notifications.$inferSelect;

@@ -12,6 +12,23 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (September 30, 2025)
 
+### Theme Modernization: Dark Mode Readability & Contrast
+**Feature**: Complete overhaul of dark theme for improved readability and modern aesthetics.
+
+**Implementation**:
+- **Balanced Purple Palette**: Background changed from near-black (hsl(304, 100%, 8%)) to balanced dark purple (hsl(280, 40%, 12%))
+- **High Contrast Text**: Foreground updated to bright white (hsl(0, 0%, 98%)) ensuring WCAG AA compliance
+- **Readable Cards**: Card backgrounds lightened to hsl(280, 35%, 18%) for better content visibility
+- **Vibrant Accents**: Primary accent enhanced to vivid pink (hsl(321, 70%, 55%)) for better visibility
+- **Typography Enhancements**: Added base styles for h1-h6, paragraphs, labels with proper sizing and spacing
+- **Modern Utility Classes**: Updated theme utilities with transitions, shadows, and hover effects
+
+**Technical Details**:
+- All CSS variables in client/src/index.css .dark class updated
+- Base layer styles enhanced for semantic HTML elements
+- Component layer utilities modernized with accessibility focus
+- Muted text color (hsl(0, 0%, 75%)) ensures secondary text remains readable
+
 ### New Feature: AI-Powered Strategy PDF Generation
 **Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.
 

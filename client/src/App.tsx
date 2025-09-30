@@ -88,7 +88,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="stratikey-ui-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="stratikey-ui-theme">
         <ModalProvider>
           <OrganizationProvider>
             <TooltipProvider>

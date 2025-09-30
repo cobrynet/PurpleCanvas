@@ -55,6 +55,7 @@ export default function Goals() {
       return await apiRequest("POST", "/api/goals", goalsData);
     },
     onSuccess: async (data) => {
+      console.log("✅ Goal created successfully, response:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
       
       toast({
@@ -64,9 +65,13 @@ export default function Goals() {
 
       // Automatic task generation
       const goalId = (data as any)?.goalId;
+      console.log("🎯 Extracted goalId:", goalId);
+      
       if (goalId) {
         try {
-          await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
+          console.log("🚀 Starting task generation for goalId:", goalId);
+          const result = await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
+          console.log("✅ Task generation completed:", result);
           
           // Invalidate after successful task generation
           queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
@@ -77,7 +82,7 @@ export default function Goals() {
             description: "Attività generate. Vai a Marketing/Commerciale → Attività",
           });
         } catch (error) {
-          console.error("Error generating tasks:", error);
+          console.error("❌ Error generating tasks:", error);
           toast({
             title: "Errore generazione attività",
             description: "Obiettivi salvati ma errore nella generazione automatica delle attività.",
@@ -85,6 +90,7 @@ export default function Goals() {
           });
         }
       } else {
+        console.error("❌ No goalId in response!");
         // No goalId in response, show warning
         toast({
           title: "Attenzione",

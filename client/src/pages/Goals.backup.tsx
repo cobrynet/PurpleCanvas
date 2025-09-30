@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { StableTextarea } from "@/components/StableTextarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,11 @@ export default function Goals() {
     { value: "COMMERCIALE", label: "Commerciale" },
     { value: "ALTRO", label: "Altro" }
   ];
+
+  // Memoized handler to prevent re-renders and focus loss
+  const handleFieldChange = useCallback((field: string, value: string) => {
+    setGoalForm(prev => ({ ...prev, [field]: value }));
+  }, []);
 
   // Check existing goals
   const { 
@@ -352,11 +358,11 @@ export default function Goals() {
                   <Target className="w-4 h-4" />
                   <span>Obiettivi aziendali *</span>
                 </Label>
-                <Textarea
+                <StableTextarea
                   id="objectives"
                   placeholder="Descrivi i principali obiettivi che vuoi raggiungere (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
                   value={goalForm.objectives}
-                  onChange={(e) => setGoalForm(prev => ({ ...prev, objectives: e.target.value }))}
+                  onChange={(value) => handleFieldChange('objectives', value)}
                   data-testid="objectives-input"
                   rows={4}
                   required

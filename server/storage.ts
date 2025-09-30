@@ -85,6 +85,7 @@ export interface IStorage {
   createBusinessGoal(goal: InsertBusinessGoal): Promise<BusinessGoal>;
   getBusinessGoals(orgId: string): Promise<BusinessGoal[]>;
   getActiveGoal(orgId: string): Promise<BusinessGoal | undefined>;
+  deleteBusinessGoal(goalId: string): Promise<void>;
   createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment>;
   createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation>;
   createOrUpdateGoalPlan(plan: InsertGoalPlan): Promise<GoalPlan>;
@@ -308,6 +309,31 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(businessGoals.createdAt))
       .limit(1);
     return goal;
+  }
+
+  async deleteBusinessGoal(goalId: string): Promise<void> {
+    // Delete related tasks first
+    await this.deleteTasksByGoalId(goalId);
+    
+    // Delete goal plan
+    await db
+      .delete(goalPlans)
+      .where(eq(goalPlans.goalId, goalId));
+    
+    // Delete budget allocations
+    await db
+      .delete(budgetAllocations)
+      .where(eq(budgetAllocations.goalId, goalId));
+    
+    // Delete goal attachments
+    await db
+      .delete(goalAttachments)
+      .where(eq(goalAttachments.goalId, goalId));
+    
+    // Finally delete the goal itself
+    await db
+      .delete(businessGoals)
+      .where(eq(businessGoals.id, goalId));
   }
 
   async createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment> {

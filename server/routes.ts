@@ -801,6 +801,33 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
+  app.delete('/api/goals/:goalId', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { goalId } = req.params;
+      
+      // Get the goal to verify ownership
+      const goals = await storage.getBusinessGoals(orgId);
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        return res.status(404).json({ message: "Goal not found" });
+      }
+      
+      if (goal.organizationId !== orgId) {
+        return res.status(403).json({ message: "No access to this goal" });
+      }
+      
+      // Delete the goal (this should cascade to related tables)
+      await storage.deleteBusinessGoal(goalId);
+      
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error deleting goal:", error);
+      res.status(500).json({ message: "Failed to delete goal" });
+    }
+  });
+
   app.post('/api/goals/:goalId/generate-tasks', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = getUserId(req.user);

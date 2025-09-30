@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Target, Users, DollarSign, Megaphone } from "lucide-react";
+import { Target, Users, DollarSign, Megaphone, Trash2 } from "lucide-react";
 
 export default function Goals() {
   const { user, isAuthenticated } = useAuth();
@@ -47,6 +47,28 @@ export default function Goals() {
     queryKey: ["/api/goals"],
     enabled: !!currentOrg?.id && isAuthenticated,
     retry: false,
+  });
+
+  // Delete goal mutation
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      return await apiRequest("DELETE", `/api/goals/${goalId}`, null);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
+      toast({
+        title: "Obiettivo cancellato",
+        description: "Ora puoi crearne uno nuovo.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error?.message || "Impossibile cancellare l'obiettivo.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Create goals mutation
@@ -167,7 +189,19 @@ export default function Goals() {
                   <Target className="w-6 h-6 text-primary" />
                   <span>Obiettivi Aziendali Definiti</span>
                 </CardTitle>
-                <Badge className="bg-green-500">Attivi</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-green-500">Attivi</Badge>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteGoalMutation.mutate(goal.id)}
+                    disabled={deleteGoalMutation.isPending}
+                    data-testid="button-delete-goal"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Cancella e ricrea
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">

@@ -591,10 +591,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the goal
       const goal = await storage.createBusinessGoal(goalData);
       
+      // Calculate duration based on periodicity
+      const durationDays = {
+        ANNUALE: 365,
+        SEMESTRALE: 180,
+        QUADRIMESTRALE: 120
+      }[goalData.periodicity] || 365;
+
+      // Determine channels from preferredChannels or digitalChannels
+      let channels: string[] = [];
+      if (goalData.preferredChannels && goalData.preferredChannels.length > 0) {
+        channels = goalData.preferredChannels;
+      } else if (goalData.digitalChannels) {
+        // Extract channels from free text
+        const text = goalData.digitalChannels.toLowerCase();
+        if (text.includes('instagram')) channels.push('Instagram');
+        if (text.includes('facebook')) channels.push('Facebook');
+        if (text.includes('linkedin')) channels.push('LinkedIn');
+        if (text.includes('twitter') || text.includes('x.com')) channels.push('Twitter');
+      }
+
+      // Check if has social ads from allocations or adInvestments
+      let hasSocialAds = false;
+      let fairsBudgetCents = 0;
+      const allocations = req.body.allocations as any[] | undefined;
+      if (allocations && allocations.length > 0) {
+        const socialAdsAlloc = allocations.find((a: any) => a.category === 'SOCIAL_ADS');
+        hasSocialAds = !!socialAdsAlloc;
+        
+        const fairsAlloc = allocations.find((a: any) => a.category === 'FIERE');
+        fairsBudgetCents = fairsAlloc?.amount || 0;
+      } else if (goalData.adInvestments) {
+        hasSocialAds = goalData.adInvestments.toLowerCase().includes('social') || 
+                       goalData.adInvestments.toLowerCase().includes('facebook') ||
+                       goalData.adInvestments.toLowerCase().includes('instagram');
+      }
+
+      const hasFairs = !!goalData.fairs || fairsBudgetCents > 0;
+
+      // Build GoalPlan spec
+      const spec = {
+        periodicity: goalData.periodicity,
+        durationDays,
+        marketing: {
+          organicPostsPerWeek: channels.length > 0 ? 3 : 2,
+          channels,
+          hasSocialAds
+        },
+        offline: {
+          fairsBudgetCents,
+          hasFairs
+        },
+        sales: {
+          cadence: "email+call",
+          targetLeadsPerMonth: 40
+        },
+        notes: goalData.objectives || ""
+      };
+
+      // Create or update GoalPlan
+      const plan = await storage.createOrUpdateGoalPlan({
+        goalId: goal.id,
+        organizationId: goalData.organizationId,
+        spec,
+        generatedAt: new Date(),
+      });
+      
       // Generate initial tasks based on goals (mock AI)
       const generatedTasks = await generateInitialTasks(goalData, userId);
       
-      res.json({ goal, generatedTasks: generatedTasks.length });
+      res.json({ ok: true, goalId: goal.id, planId: plan.id });
     } catch (error) {
       console.error("Error creating goals:", error);
       res.status(500).json({ message: "Failed to create goals" });

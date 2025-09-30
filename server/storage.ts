@@ -5,6 +5,7 @@ import {
   businessGoals,
   goalAttachments,
   budgetAllocations,
+  goalPlans,
   campaigns,
   leads,
   opportunities,
@@ -58,6 +59,8 @@ import {
   type InsertAgentPresence,
   type UserSettings,
   type OrganizationSettings,
+  type GoalPlan,
+  type InsertGoalPlan,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull, sql } from "drizzle-orm";
@@ -83,6 +86,7 @@ export interface IStorage {
   getBusinessGoals(orgId: string): Promise<BusinessGoal[]>;
   createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment>;
   createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation>;
+  createOrUpdateGoalPlan(plan: InsertGoalPlan): Promise<GoalPlan>;
 
   // Campaign operations
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
@@ -300,6 +304,26 @@ export class DatabaseStorage implements IStorage {
   async createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation> {
     const [created] = await db.insert(budgetAllocations).values(allocation).returning();
     return created;
+  }
+
+  async createOrUpdateGoalPlan(plan: InsertGoalPlan): Promise<GoalPlan> {
+    const [upserted] = await db
+      .insert(goalPlans)
+      .values({
+        ...plan,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: goalPlans.goalId,
+        set: {
+          spec: plan.spec,
+          generatedAt: new Date(),
+          version: sql`${goalPlans.version} + 1`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return upserted;
   }
 
   // Campaign operations

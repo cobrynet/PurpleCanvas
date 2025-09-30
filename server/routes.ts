@@ -2084,7 +2084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/settings/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
-      const membership = req.membership;
+      const membership = req.currentMembership;
       
       const settings = await storage.getOrganizationSettings(organizationId);
       
@@ -2121,10 +2121,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/settings/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
-      const membership = req.membership;
+      const membership = req.currentMembership;
       
       // Check if user has permission to update organization settings
-      if (!['ORG_ADMIN', 'SUPER_ADMIN'].includes(membership?.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN'].includes(membership?.role)) {
         return res.status(403).json({ error: 'Insufficient permissions to update organization settings' });
       }
       
@@ -2168,10 +2168,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/settings/organization/members', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
-      const membership = req.membership;
+      const membership = req.currentMembership;
       
       // Check if user has permission to view members
-      if (!['ORG_ADMIN', 'SUPER_ADMIN'].includes(membership?.role)) {
+      if (!['SUPER_ADMIN', 'ORG_ADMIN'].includes(membership?.role)) {
         return res.status(403).json({ error: 'Insufficient permissions to view organization members' });
       }
       

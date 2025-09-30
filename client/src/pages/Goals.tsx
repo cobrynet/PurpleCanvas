@@ -56,7 +56,6 @@ export default function Goals() {
     },
     onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       
       toast({
         title: "Obiettivi salvati!",
@@ -69,6 +68,7 @@ export default function Goals() {
         try {
           await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
           
+          // Invalidate after successful task generation
           queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
           queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
           
@@ -84,6 +84,13 @@ export default function Goals() {
             variant: "destructive",
           });
         }
+      } else {
+        // No goalId in response, show warning
+        toast({
+          title: "Attenzione",
+          description: "Obiettivi salvati ma impossibile generare attività automaticamente.",
+          variant: "destructive",
+        });
       }
     },
     onError: (error: any) => {

@@ -59,13 +59,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white dark:bg-black">
       {/* Sidebar Sinistra */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-xl">
+      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-[#390035] to-[#901d6b] text-white border-r border-border">
         <div className="flex h-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center border-b border-sidebar-border px-6">
-            <h1 className="text-xl font-bold text-sidebar-foreground">
+          <div className="flex h-16 items-center border-b border-white/20 px-6">
+            <h1 className="text-xl font-bold text-white">
               Stratikey
             </h1>
           </div>
@@ -80,10 +80,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className={`w-full justify-start text-left font-normal h-11 transition-all ${
+                  className={`w-full justify-start text-left font-normal h-11 ${
                     isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      ? "bg-white/20 text-white hover:bg-white/30"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                   data-testid={`sidebar-${item.id}`}
                   asChild
@@ -102,7 +102,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content Area */}
       <div className="pl-64">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-black/95 dark:supports-[backdrop-filter]:bg-black/60">
           <div className="flex h-16 items-center justify-end px-6">
             <div className="flex items-center space-x-4">
               {/* Organization Selector */}
@@ -197,7 +197,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src="/avatar.jpg" alt="User" />
-                      <AvatarFallback className="bg-primary text-primary-foreground">
+                      <AvatarFallback className="bg-[#390035] text-white">
                         U
                       </AvatarFallback>
                     </Avatar>

@@ -667,6 +667,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/goals/active', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      
+      const goal = await storage.getActiveGoal(orgId);
+      res.json(goal || null);
+    } catch (error) {
+      console.error("Error fetching active goal:", error);
+      res.status(500).json({ message: "Failed to fetch active goal" });
+    }
+  });
+
   app.get('/api/goals', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;

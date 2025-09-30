@@ -12,6 +12,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (September 30, 2025)
 
+### Theme & Layout Modernization
+**Feature**: Complete modernization of dark theme and layout components for improved readability and modern aesthetics.
+
+**Implementation**:
+- **CSS Theme Variables**: Updated both light and dark theme color palettes
+  - Dark: Background hsl(280, 40%, 12%), Foreground hsl(0, 0%, 98%), Primary hsl(321, 70%, 55%)
+  - Light: Background hsl(0, 0%, 98%), Foreground hsl(280, 40%, 12%)
+  - Sidebar: hsl(280, 50%, 15%) dark, hsl(280, 30%, 96%) light
+- **Layout Components**: Removed all hardcoded colors from layout files
+  - AppLayout.tsx: Migrated from hardcoded gradient `from-[#390035] to-[#901d6b]` to theme tokens
+  - Sidebar now uses `bg-sidebar`, `text-sidebar-foreground`, `border-sidebar-border`
+  - Header uses `bg-card/95` with backdrop blur
+  - Navigation buttons use `sidebar-accent` tokens with modern transitions
+- **Typography**: Enhanced base styles for h1-h6, paragraphs, labels with proper sizing and spacing
+- **Modern Utilities**: Added shadow effects, transitions, and hover states
+
+**Technical Details**:
+- client/src/index.css: All CSS variables updated for :root (light) and .dark themes
+- client/src/app/layout.tsx: Complete migration to theme token system
+- client/src/components/layout/MainLayout.tsx: Added max-w-7xl container and improved padding
+- WCAG AA contrast compliance ensured for all text elements
+
 ### New Feature: AI-Powered Strategy PDF Generation
 **Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.
 

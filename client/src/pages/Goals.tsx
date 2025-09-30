@@ -37,6 +37,8 @@ export default function Goals() {
     geoArea: ""
   });
 
+  const [allocations, setAllocations] = useState<Array<{ category: string; amount: string; notes: string }>>([]);
+
   // Check existing goals
   const { data: existingGoals, isLoading: goalsLoading } = useQuery({
     queryKey: ["/api/goals"],
@@ -89,6 +91,13 @@ export default function Goals() {
       digitalChannels: form.digitalChannels || null,
       adInvestments: form.adInvestments || null,
       geoArea: form.geoArea || null,
+      allocations: allocations
+        .filter(a => a.category && a.amount)
+        .map(a => ({
+          category: a.category,
+          amount: parseFloat(a.amount) || 0,
+          notes: a.notes || null,
+        })),
     };
 
     createGoalsMutation.mutate(goalsData);
@@ -169,6 +178,30 @@ export default function Goals() {
                 <div>
                   <h3 className="font-semibold mb-2">Area Geografica</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">{goal.geoArea}</p>
+                </div>
+              )}
+
+              {goal.allocations && goal.allocations.length > 0 && (
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold mb-3">Allocazioni Budget Pubblicitario</h3>
+                  <div className="space-y-2">
+                    {goal.allocations.map((allocation: any) => (
+                      <div key={allocation.id} className="flex justify-between items-center p-3 bg-muted/50 rounded">
+                        <div className="flex-1">
+                          <span className="font-medium">
+                            {allocation.category === 'SOCIAL_ADS' && 'Social Ads'}
+                            {allocation.category === 'FIERE' && 'Fiere'}
+                            {allocation.category === 'COMMERCIALE' && 'Commerciale'}
+                            {allocation.category === 'ALTRO' && 'Altro'}
+                          </span>
+                          {allocation.notes && (
+                            <span className="text-sm text-muted-foreground ml-2">- {allocation.notes}</span>
+                          )}
+                        </div>
+                        <span className="font-semibold">€ {allocation.amount?.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -317,6 +350,85 @@ export default function Goals() {
                   data-testid="geo-area-input"
                   rows={3}
                 />
+              </div>
+
+              {/* Allocazioni Budget */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base">Allocazione Budget Pubblicitario</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllocations([...allocations, { category: "", amount: "", notes: "" }])}
+                    data-testid="add-allocation-button"
+                  >
+                    + Aggiungi Allocazione
+                  </Button>
+                </div>
+
+                {allocations.map((allocation, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-3 p-4 border rounded-lg bg-muted/50">
+                    <div className="col-span-4">
+                      <Select
+                        value={allocation.category}
+                        onValueChange={(value) => {
+                          const newAllocations = [...allocations];
+                          newAllocations[index].category = value;
+                          setAllocations(newAllocations);
+                        }}
+                      >
+                        <SelectTrigger data-testid={`allocation-category-${index}`}>
+                          <SelectValue placeholder="Categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SOCIAL_ADS">Social Ads</SelectItem>
+                          <SelectItem value="FIERE">Fiere</SelectItem>
+                          <SelectItem value="COMMERCIALE">Commerciale</SelectItem>
+                          <SelectItem value="ALTRO">Altro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-3">
+                      <Input
+                        type="number"
+                        placeholder="Importo €"
+                        value={allocation.amount}
+                        onChange={(e) => {
+                          const newAllocations = [...allocations];
+                          newAllocations[index].amount = e.target.value;
+                          setAllocations(newAllocations);
+                        }}
+                        data-testid={`allocation-amount-${index}`}
+                        min="0"
+                        step="100"
+                      />
+                    </div>
+                    <div className="col-span-4">
+                      <Input
+                        placeholder="Note (opzionale)"
+                        value={allocation.notes}
+                        onChange={(e) => {
+                          const newAllocations = [...allocations];
+                          newAllocations[index].notes = e.target.value;
+                          setAllocations(newAllocations);
+                        }}
+                        data-testid={`allocation-notes-${index}`}
+                      />
+                    </div>
+                    <div className="col-span-1 flex items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAllocations(allocations.filter((_, i) => i !== index))}
+                        data-testid={`remove-allocation-${index}`}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Submit Button */}

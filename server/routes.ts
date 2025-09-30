@@ -156,6 +156,7 @@ async function createTaskForUnconnectedPlatform(organizationId: string, userId: 
     const task = await storage.createMarketingTaskWithAutomation({
       organizationId,
       title: `Pubblica su ${platform}`,
+      description: `Pubblica manualmente il seguente contenuto su ${platform}:\n\n${postContent}${imageUrl ? `\n\nImmagine allegata: ${imageUrl}` : ''}`,
       type: 'SOCIAL_PUBLISHING',
       assigneeId: userId,
       status: 'BACKLOG' as const,
@@ -469,9 +470,17 @@ async function generateInitialTasks(goalData: any, userId: string): Promise<any[
   // Create tasks in database
   for (const taskData of baseTasks) {
     try {
+      // Generate description based on task type
+      let description = `Attività ${taskData.type}`;
+      if (taskData.subtype) {
+        description += ` - ${taskData.subtype}`;
+      }
+      description += `: ${taskData.title}`;
+      
       const task = await storage.createMarketingTaskWithAutomation({
         organizationId: orgId,
         title: taskData.title,
+        description,
         type: taskData.type,
         subtype: taskData.subtype,
         assigneeId: userId,
@@ -1081,6 +1090,43 @@ Genera un piano coerente e realistico in formato JSON.`;
         });
       }
 
+      // Add descriptions to all tasks before saving
+      tasksToCreate.forEach(task => {
+        if (!task.description) {
+          // Generate description based on task type and module
+          if (task.module === 'marketing') {
+            task.description = `Crea e pubblica un post ${task.subtype || 'organico'} su ${task.metadata?.channel || 'social'}. Settimana ${task.metadata?.week || 'N/A'}.`;
+          } else if (task.module === 'marketing_adv') {
+            if (task.subtype === 'SETUP') {
+              task.description = `Configura e ottimizza le campagne pubblicitarie per il mese ${task.metadata?.month || 'N/A'}. Verifica budget, targeting e creatività.`;
+            } else if (task.subtype === 'REPORT') {
+              task.description = `Analizza i risultati delle campagne pubblicitarie del mese ${task.metadata?.month || 'N/A'}. Genera report con metriche chiave (CTR, CPC, conversioni).`;
+            }
+          } else if (task.module === 'marketing_offline') {
+            if (task.subtype === 'PLANNING') {
+              task.description = `Pianifica la partecipazione alla fiera del trimestre Q${task.metadata?.quarter || 'N/A'}. Seleziona eventi, prenota stand, definisci budget.`;
+            } else if (task.subtype === 'MATERIALS') {
+              task.description = `Prepara i materiali di stampa per la fiera Q${task.metadata?.quarter || 'N/A'}: brochure, roll-up, biglietti da visita, gadget.`;
+            } else if (task.subtype === 'LEAD_CAPTURE') {
+              task.description = `Configura il sistema di lead capture per la fiera Q${task.metadata?.quarter || 'N/A'}: form, tablet, integrazione CRM.`;
+            }
+          } else if (task.module === 'crm') {
+            if (task.type === 'PROSPECTING') {
+              task.description = `Attività di prospezione per il mese ${task.metadata?.month || 'N/A'}: identifica e contatta nuovi potenziali clienti, crea liste di target.`;
+            } else if (task.type === 'FOLLOWUP') {
+              task.description = `Follow-up con i lead del mese ${task.metadata?.month || 'N/A'}, settimana ${task.metadata?.week || 'N/A'}. Invia email, effettua chiamate, qualifica opportunità.`;
+            } else if (task.type === 'MEETING') {
+              task.description = `Organizza e conduce demo/call commerciali per il mese ${task.metadata?.month || 'N/A'}. Presenta soluzioni, gestisci obiezioni, chiudi deal.`;
+            }
+          }
+          
+          // Fallback description if not matched
+          if (!task.description) {
+            task.description = `${task.title} - ${task.type}${task.subtype ? ` (${task.subtype})` : ''}`;
+          }
+        }
+      });
+
       // Save all tasks
       const createdTasks = await Promise.all(
         tasksToCreate.map(task => storage.createMarketingTask(task))
@@ -1372,6 +1418,7 @@ Genera un piano coerente e realistico in formato JSON.`;
           organizationId: orgId,
           campaignId: campaign.id,
           title: `Gestione Campagna ADV: ${campaign.name}`,
+          description: `Gestisci e monitora la campagna pubblicitaria "${campaign.name}". Obiettivo: ${campaign.objective || 'Non specificato'}. Budget: €${campaign.budget ? (campaign.budget / 100).toFixed(2) : 'Non specificato'}.`,
           type: 'campaign_management',
           subtype: 'adv_setup',
           assigneeId: userId,
@@ -1441,6 +1488,7 @@ Genera un piano coerente e realistico in formato JSON.`;
         organizationId: orgId,
         leadId: lead.id,
         title: `Follow-up Lead: ${lead.firstName} ${lead.lastName}`,
+        description: `Effettua il follow-up con ${lead.firstName} ${lead.lastName}${lead.company ? ` (${lead.company})` : ''}. Contatto: ${lead.email || lead.phone || 'Non specificato'}. Fonte: ${lead.source || 'Non specificata'}.`,
         type: 'lead_management',
         subtype: 'lead_followup',
         assigneeId: userId,
@@ -1493,6 +1541,7 @@ Genera un piano coerente e realistico in formato JSON.`;
         organizationId: orgId,
         opportunityId: opportunity.id,
         title: `Opportunity Review: ${opportunity.title}`,
+        description: `Revisiona l'opportunità "${opportunity.title}". Stage: ${opportunity.stage}. Valore: €${opportunity.amount ? (opportunity.amount / 100).toFixed(2) : 'Non specificato'}. Probabilità: ${opportunity.probability || 0}%.`,
         type: 'opportunity_management',
         subtype: 'opportunity_reminder',
         assigneeId: userId,
@@ -1579,6 +1628,7 @@ Genera un piano coerente e realistico in formato JSON.`;
       const taskData = {
         organizationId: orgId,
         title: taskTitle,
+        description: `${activity.description || `Organizza e gestisci l'attività offline di tipo ${activity.type}`}. Budget: €${activity.budget ? (activity.budget / 100).toFixed(2) : 'Non specificato'}.`,
         type: 'marketing_offline',
         subtype: activity.type.toLowerCase(),
         assigneeId: userId,

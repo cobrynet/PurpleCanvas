@@ -30,6 +30,7 @@ export const periodicityEnum = pgEnum('periodicity', ['ANNUALE', 'SEMESTRALE', '
 export const budgetCategoryEnum = pgEnum('budget_category', ['SOCIAL_ADS', 'FIERE', 'COMMERCIALE', 'ALTRO']);
 export const offlineActivityTypeEnum = pgEnum('offline_activity_type', ['FIERA', 'EVENTO', 'STAMPA', 'PR', 'SPONSORSHIP', 'DIRECT_MAIL', 'RADIO', 'TV', 'OUTDOOR', 'ALTRO']);
 export const notificationTypeEnum = pgEnum('notification_type', ['INFO', 'SUCCESS', 'WARNING', 'ERROR']);
+export const postTypeEnum = pgEnum('post_type', ['PHOTO', 'VIDEO', 'CAROUSEL']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -115,8 +116,11 @@ export const marketingTasks = pgTable("marketing_tasks", {
   goalId: uuid("goal_id").references(() => businessGoals.id),
   module: varchar("module"), // marketing, marketing_adv, marketing_offline, crm
   title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
   type: varchar("type").notNull(),
   subtype: varchar("subtype"),
+  caption: text("caption"),
+  postType: postTypeEnum("post_type"),
   assigneeId: varchar("assignee_id").references(() => users.id),
   status: taskStatusEnum("status").default('BACKLOG'),
   priority: priorityEnum("priority").default('P2'),
@@ -326,6 +330,9 @@ export const businessGoals = pgTable("business_goals", {
   periodicity: periodicityEnum("periodicity").notNull(),
   objectives: text("objectives").notNull(),
   totalBudget: integer("total_budget").notNull(), // in centesimi
+  aiPlan: jsonb("ai_plan"),
+  strategyPdfUrl: varchar("strategy_pdf_url"),
+  strategyGeneratedAt: timestamp("strategy_generated_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -589,6 +596,12 @@ export const insertMarketingTaskSchema = createInsertSchema(marketingTasks).omit
   createdAt: true,
 });
 
+export const updateMarketingTaskSchema = createInsertSchema(marketingTasks).omit({
+  id: true,
+  createdAt: true,
+  organizationId: true,
+}).partial();
+
 export const insertSocialPostSchema = createInsertSchema(socialPosts).omit({
   id: true,
   createdAt: true,
@@ -688,6 +701,7 @@ export type Opportunity = typeof opportunities.$inferSelect;
 export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
 export type MarketingTask = typeof marketingTasks.$inferSelect;
 export type InsertMarketingTask = z.infer<typeof insertMarketingTaskSchema>;
+export type UpdateMarketingTask = z.infer<typeof updateMarketingTaskSchema>;
 export type SocialPost = typeof socialPosts.$inferSelect;
 export type InsertSocialPost = z.infer<typeof insertSocialPostSchema>;
 export type Asset = typeof assets.$inferSelect;

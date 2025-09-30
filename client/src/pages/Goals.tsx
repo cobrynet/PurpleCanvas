@@ -57,6 +57,22 @@ export default function Goals() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
+      
+      // Reset form state
+      setForm({
+        objectives: "",
+        periodicity: "",
+        totalBudget: "",
+        salesPipeline: "",
+        fairs: "",
+        digitalChannels: "",
+        adInvestments: "",
+        geoArea: "",
+        sector: "",
+        preferredChannels: []
+      });
+      setAllocations([]);
+      
       toast({
         title: "Obiettivo cancellato",
         description: "Ora puoi crearne uno nuovo.",

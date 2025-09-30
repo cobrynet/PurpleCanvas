@@ -705,10 +705,9 @@ Genera un piano coerente e realistico in formato JSON.`;
         planId = manualPlan.id;
       }
       
-      // Generate initial tasks based on goals (mock AI)
-      const generatedTasks = await generateInitialTasks(goalData, userId);
-      
-      res.json({ ok: true, goalId: goal.id, planId });
+      const response = { ok: true, goalId: goal.id, planId };
+      console.log("[POST /api/goals] Sending response:", JSON.stringify(response));
+      res.json(response);
     } catch (error) {
       console.error("Error creating goals:", error);
       res.status(500).json({ message: "Failed to create goals" });

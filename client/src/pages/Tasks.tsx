@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertMarketingTaskSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -29,10 +30,11 @@ type ViewMode = 'list' | 'kanban' | 'calendar';
 
 export default function Tasks() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { selectedOrganization } = useOrganization();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   
-  const currentOrg = user?.organizations?.[0];
+  const currentOrg = selectedOrganization;
   const currentMembership = currentOrg?.membership;
 
   // All roles can view tasks

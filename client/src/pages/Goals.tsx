@@ -93,7 +93,7 @@ export default function Goals() {
       return await apiRequest("POST", "/api/goals", goalsData);
     },
     onSuccess: async (data) => {
-      console.log("✅ Goal created successfully, response:", data);
+      console.log("✅ Goal created successfully, full response:", JSON.stringify(data, null, 2));
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
       
       toast({
@@ -103,7 +103,8 @@ export default function Goals() {
 
       // Automatic task generation
       const goalId = (data as any)?.goalId;
-      console.log("🎯 Extracted goalId:", goalId);
+      console.log("🎯 Extracted goalId from response:", goalId);
+      console.log("🎯 Response data type:", typeof data, "keys:", Object.keys(data || {}));
       
       if (goalId) {
         try {
@@ -111,13 +112,15 @@ export default function Goals() {
           const result = await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
           console.log("✅ Task generation completed:", result);
           
-          // Invalidate after successful task generation
+          // Invalidate after successful task generation - use correct query key!
           queryClient.invalidateQueries({ queryKey: ["/api/goals/active"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+          if (currentOrg?.id) {
+            queryClient.invalidateQueries({ queryKey: ["/api/organizations", currentOrg.id, "tasks"] });
+          }
           
           toast({
             title: "Attività generate!",
-            description: "Attività generate. Vai a Marketing/Commerciale → Attività",
+            description: "Attività generate con successo. Le trovi in Marketing/Commerciale → Attività",
           });
         } catch (error) {
           console.error("❌ Error generating tasks:", error);
@@ -153,6 +156,16 @@ export default function Goals() {
       toast({
         title: "Errore",
         description: "Nessuna organizzazione selezionata",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!form.objectives || !form.periodicity || !form.totalBudget) {
+      toast({
+        title: "Campi obbligatori mancanti",
+        description: "Compila obiettivi, periodicità e budget totale",
         variant: "destructive",
       });
       return;

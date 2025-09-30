@@ -13,7 +13,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes (September 30, 2025)
 
 ### Theme Modernization: Dark Mode Readability & Contrast
-**Feature**: Complete overhaul of dark theme for improved readability and modern aesthetics.
+**Feature**: Complete overhaul of dark theme for improved readability and modern aesthetics, including layout component modernization.
 
 **Implementation**:
 - **Balanced Purple Palette**: Background changed from near-black (hsl(304, 100%, 8%)) to balanced dark purple (hsl(280, 40%, 12%))
@@ -22,12 +22,17 @@ Preferred communication style: Simple, everyday language.
 - **Vibrant Accents**: Primary accent enhanced to vivid pink (hsl(321, 70%, 55%)) for better visibility
 - **Typography Enhancements**: Added base styles for h1-h6, paragraphs, labels with proper sizing and spacing
 - **Modern Utility Classes**: Updated theme utilities with transitions, shadows, and hover effects
+- **Layout Modernization**: Removed all hardcoded colors from AppLayout and MainLayout components to use theme tokens
 
 **Technical Details**:
-- All CSS variables in client/src/index.css .dark class updated
+- All CSS variables in client/src/index.css updated for both :root (light) and .dark classes
 - Base layer styles enhanced for semantic HTML elements
 - Component layer utilities modernized with accessibility focus
 - Muted text color (hsl(0, 0%, 75%)) ensures secondary text remains readable
+- **AppLayout.tsx**: Sidebar now uses bg-sidebar, text-sidebar-foreground, border-sidebar-border; removed hardcoded gradient from-[#390035] to-[#901d6b]
+- **Header**: Changed from bg-white/95 dark:bg-black/95 to bg-card/95 with theme tokens
+- **Avatar**: Changed from bg-[#390035] to bg-primary
+- **MainLayout.tsx**: Added max-w-7xl container for modern centered layout with improved spacing (p-8)
 
 ### New Feature: AI-Powered Strategy PDF Generation
 **Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.

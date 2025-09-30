@@ -49,6 +49,10 @@ Preferred communication style: Simple, everyday language.
 - **Core Entities**: Users, Organizations, Campaigns, Leads, Opportunities, Marketing Tasks, Assets, Services
 - **Permission Model**: Hierarchical permissions with organization-level access control
 - **Data Relationships**: Normalized schema with foreign key constraints and proper indexing
+- **Goal-Driven Task Management**: Automatic task generation from business goals with GoalPlan specifications
+  - Tasks linked to goals via goalId and module fields (marketing, marketing_adv, marketing_offline, crm)
+  - Task filtering in UI based on goal and module context
+  - Integration between Goals, Marketing, CRM, and Task Manager pages
 
 ## External Dependencies
 

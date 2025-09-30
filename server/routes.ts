@@ -1472,19 +1472,19 @@ Genera un piano coerente e realistico in formato JSON.`;
         return res.status(404).json({ message: "Strategy PDF not generated yet" });
       }
 
-      // Fetch PDF from object storage
-      const pdfResponse = await fetch(goal.strategyPdfUrl);
+      // Get file from object storage using normalized path
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
       
-      if (!pdfResponse.ok) {
-        throw new Error(`Failed to fetch PDF: ${pdfResponse.statusText}`);
-      }
+      // Normalize the publicUrl to get the correct object path
+      const objectPath = objectStorageService.normalizeObjectEntityPath(goal.strategyPdfUrl);
+      const file = await objectStorageService.getObjectEntityFile(objectPath);
 
-      const pdfBuffer = await pdfResponse.arrayBuffer();
-
-      // Set headers for PDF download
-      res.setHeader('Content-Type', 'application/pdf');
+      // Set download filename
       res.setHeader('Content-Disposition', `attachment; filename="strategia-${goalId}.pdf"`);
-      res.send(Buffer.from(pdfBuffer));
+      
+      // Download file directly to response
+      await objectStorageService.downloadObject(file, res);
     } catch (error: any) {
       console.error("Error downloading strategy PDF:", error);
       res.status(500).json({ 

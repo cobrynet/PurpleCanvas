@@ -12,17 +12,45 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (September 30, 2025)
 
-### Critical Bug Fix: Goal Creation and Task Generation Flow
+### New Feature: AI-Powered Strategy PDF Generation
+**Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.
+
+**Implementation**:
+- **AI Strategy Generation**: POST /api/goals/:goalId/ai-plan endpoint uses OpenAI to analyze business goals and generate comprehensive strategic plans including marketing, offline, and sales strategies
+- **PDF Document Creation**: POST /api/goals/:goalId/strategy-pdf endpoint generates professionally formatted PDF documents using PDFKit library with goal details and AI-generated strategy
+- **Secure Download**: GET /api/goals/:goalId/strategy.pdf endpoint provides authenticated PDF download using ObjectStorageService with proper path normalization
+- **Frontend Integration**: Goals.tsx now displays conditional "Genera Piano AI" or "Scarica Piano" buttons based on strategy generation status
+
+**Technical Details**:
+- PDFKit library added for server-side PDF generation
+- Object storage integration for secure file storage with organization-scoped paths
+- Database schema updated: business_goals table now includes `aiPlan` (text), `strategyPdfUrl` (text), and `strategyGeneratedAt` (timestamp)
+- Storage interface enhanced with `updateBusinessGoal` method for partial goal updates
+
+### New Feature: Enhanced Task Management with Descriptions and Social Fields
+**Feature**: All marketing tasks now include mandatory descriptions and social media-specific fields for better content planning.
+
+**Implementation**:
+- **Task Descriptions**: All tasks now require a `description` field (text, required) that provides detailed context
+- **Social Media Fields**: Tasks include optional `caption` (text) for social post content and `postType` (enum: foto/video/carosello) for post format
+- **Task Detail Dialog**: New comprehensive dialog in Tasks.tsx for viewing and editing all task fields including social-specific ones
+- **Automatic Generation**: All task generation endpoints updated to automatically include contextual descriptions based on task type and goal context
+
+**Technical Details**:
+- Database schema updated: marketing_tasks table includes `description` (text, required), `caption` (text), `postType` (enum)
+- New endpoints: GET /api/tasks/:id (fetch single task), PATCH /api/tasks/:id (update task with validation)
+- Frontend enhancements: Task detail dialog with view/edit modes, form validation using updateMarketingTaskSchema
+- All existing tasks (1055+) updated with contextual descriptions
+
+**Bug Fixes**:
+- Fixed PDF download object storage path resolution using ObjectStorageService.normalizeObjectEntityPath()
+- Added missing type definitions for updateBusinessGoal in IStorage interface
+- Resolved import issues for Loader2 icon component
+
+### Previous Bug Fix: Goal Creation and Task Generation Flow
 **Issue**: Tasks were not being generated after goal creation despite successful API responses.
 
-**Root Cause**: The `apiRequest()` utility function returns a `Response` object, not parsed JSON. The Goals page was trying to access `data.goalId` directly from the Response object, resulting in `undefined`. This prevented the task generation endpoint from being called.
-
-**Resolution**: 
-- Updated `Goals.tsx` to parse JSON responses: `const response = await apiRequest(...); return await response.json();`
-- Applied to both goal creation and task generation API calls
-- Tasks now correctly generate and persist with proper `module`, `goalId`, and `organizationId` fields
-
-**Impact**: Complete end-to-end flow now works: goal creation → task generation → task display in /tasks and filtered views in Marketing/CRM pages.
+**Resolution**: Updated Goals.tsx to properly parse JSON responses from apiRequest() utility. Tasks now correctly generate and persist with proper module, goalId, and organizationId fields.
 
 ## System Architecture
 

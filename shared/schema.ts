@@ -112,6 +112,8 @@ export const marketingTasks = pgTable("marketing_tasks", {
   campaignId: uuid("campaign_id").references(() => campaigns.id),
   leadId: uuid("lead_id").references(() => leads.id),
   opportunityId: uuid("opportunity_id").references(() => opportunities.id),
+  goalId: uuid("goal_id").references(() => businessGoals.id),
+  module: varchar("module"), // marketing, marketing_adv, marketing_offline, crm
   title: varchar("title", { length: 255 }).notNull(),
   type: varchar("type").notNull(),
   subtype: varchar("subtype"),
@@ -119,6 +121,7 @@ export const marketingTasks = pgTable("marketing_tasks", {
   status: taskStatusEnum("status").default('BACKLOG'),
   priority: priorityEnum("priority").default('P2'),
   dueAt: timestamp("due_at"),
+  metadata: jsonb("metadata"), // Extra fields like channel, week number, etc.
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -10,6 +10,20 @@ The platform features role-based access control with different permission levels
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (September 30, 2025)
+
+### Critical Bug Fix: Goal Creation and Task Generation Flow
+**Issue**: Tasks were not being generated after goal creation despite successful API responses.
+
+**Root Cause**: The `apiRequest()` utility function returns a `Response` object, not parsed JSON. The Goals page was trying to access `data.goalId` directly from the Response object, resulting in `undefined`. This prevented the task generation endpoint from being called.
+
+**Resolution**: 
+- Updated `Goals.tsx` to parse JSON responses: `const response = await apiRequest(...); return await response.json();`
+- Applied to both goal creation and task generation API calls
+- Tasks now correctly generate and persist with proper `module`, `goalId`, and `organizationId` fields
+
+**Impact**: Complete end-to-end flow now works: goal creation → task generation → task display in /tasks and filtered views in Marketing/CRM pages.
+
 ## System Architecture
 
 ### Frontend Architecture

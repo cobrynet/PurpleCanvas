@@ -90,7 +90,8 @@ export default function Goals() {
   // Create goals mutation
   const createGoalsMutation = useMutation({
     mutationFn: async (goalsData: any) => {
-      return await apiRequest("POST", "/api/goals", goalsData);
+      const response = await apiRequest("POST", "/api/goals", goalsData);
+      return await response.json();
     },
     onSuccess: async (data) => {
       console.log("✅ Goal created successfully, full response:", JSON.stringify(data, null, 2));
@@ -109,7 +110,8 @@ export default function Goals() {
       if (goalId) {
         try {
           console.log("🚀 Starting task generation for goalId:", goalId);
-          const result = await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
+          const response = await apiRequest("POST", `/api/goals/${goalId}/generate-tasks`, {});
+          const result = await response.json();
           console.log("✅ Task generation completed:", result);
           
           // Invalidate after successful task generation - use correct query key!

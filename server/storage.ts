@@ -1066,7 +1066,7 @@ export class DatabaseStorage implements IStorage {
   // Task automation operations
   async createMarketingTaskWithAutomation(task: InsertMarketingTask): Promise<MarketingTask> {
     // Check for existing similar tasks to avoid duplicates (idempotency)
-    const existingTasks = await this.db.query.marketingTasks.findMany({
+    const existingTasks = await db.query.marketingTasks.findMany({
       where: and(
         eq(marketingTasks.organizationId, task.organizationId),
         eq(marketingTasks.type, task.type),

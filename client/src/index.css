@@ -5,22 +5,22 @@
 :root {
   --background: hsl(304, 100%, 10%);
   --foreground: hsl(0, 0%, 100%);
-  --card: hsl(304, 80%, 15%);
+  --card: hsl(304, 80%, 18%);
   --card-foreground: hsl(0, 0%, 100%);
-  --popover: hsl(304, 80%, 15%);
+  --popover: hsl(304, 80%, 18%);
   --popover-foreground: hsl(0, 0%, 100%);
   --primary: hsl(321, 62%, 34%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(321, 50%, 45%);
   --secondary-foreground: hsl(0, 0%, 100%);
-  --muted: hsl(304, 60%, 20%);
-  --muted-foreground: hsl(0, 0%, 80%);
+  --muted: hsl(304, 60%, 22%);
+  --muted-foreground: hsl(0, 0%, 85%);
   --accent: hsl(321, 62%, 34%);
   --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(304, 60%, 25%);
-  --input: hsl(304, 60%, 25%);
+  --border: hsl(304, 50%, 28%);
+  --input: hsl(304, 60%, 20%);
   --ring: hsl(321, 62%, 34%);
   --chart-1: hsl(321, 62%, 34%);
   --chart-2: hsl(159, 100%, 36%);
@@ -33,7 +33,7 @@
   --sidebar-primary-foreground: hsl(0, 0%, 100%);
   --sidebar-accent: hsl(321, 50%, 45%);
   --sidebar-accent-foreground: hsl(0, 0%, 100%);
-  --sidebar-border: hsl(304, 60%, 25%);
+  --sidebar-border: hsl(304, 50%, 28%);
   --sidebar-ring: hsl(321, 62%, 34%);
   --font-sans: "Inter", sans-serif;
   --font-serif: "Georgia", serif;
@@ -105,5 +105,35 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-semibold;
+  }
+  
+  input, textarea, select {
+    @apply bg-input text-foreground placeholder:text-muted-foreground;
+  }
+}
+
+@layer components {
+  .theme-card {
+    @apply bg-card text-card-foreground border-border rounded-2xl shadow-md;
+  }
+  
+  .theme-button-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-colors;
+  }
+  
+  .theme-button-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors;
+  }
+  
+  .theme-accent {
+    @apply text-accent;
+  }
+  
+  .theme-background {
+    @apply bg-background text-foreground;
   }
 }

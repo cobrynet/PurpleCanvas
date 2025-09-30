@@ -12,40 +12,37 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (September 30, 2025)
 
-### Theme Modernization: Futuristic Neon Design with Deep Black & Magenta
-**Feature**: Complete redesign with futuristic neon aesthetic featuring deep black backgrounds, vivid magenta/violet accents, glow effects, and glassmorphism.
+### Complete Layout Restructure: Finance-Style Top Navigation Design
+**Feature**: Complete structural redesign from fixed sidebar to horizontal top navigation bar with clean white/violet theme inspired by modern finance applications.
 
-**Implementation**:
-- **Deep Black Background**: Background changed to near-black hsl(270, 80%, 4%) for dramatic futuristic look
-- **Vivid Magenta Accents**: Primary accent set to hsl(321, 85%, 60%) - bright neon pink/magenta
-- **Electric Violet Secondary**: Secondary color hsl(280, 70%, 50%) for vibrant contrast
-- **Neon Glow Effects**: Custom shadow variables for magenta and violet glow (0 0 20px + 40px blur)
-- **Glassmorphism**: Card backgrounds use backdrop-blur-xl with semi-transparent bg-card/40
-- **Gradient Backgrounds**: Linear and radial gradients from black→violet→magenta for depth
-- **Luminous Borders**: Primary borders hsl(321, 85%, 60%) with neon glow effects
-- **High Contrast Text**: White (hsl(0, 0%, 98%)) on deep black for optimal readability
+**Layout Architecture Changes**:
+- **REMOVED**: Fixed left sidebar (64-width vertical navigation)
+- **ADDED**: Horizontal top navigation bar with sticky positioning
+  - Logo (left): Stratikey brand with ghost button styling
+  - Navigation (center): Horizontal menu with Obiettivi, Marketing, Social, CRM, Tasks, Marketplace
+  - User Actions (right): OrganizationSelector, Notifications dropdown, Settings link, Account menu
+- **Responsive**: Hidden md:flex navigation for mobile-first approach
+- **Active States**: Primary background/text for active routes, muted hover states
 
-**Technical Details**:
-- **Theme Tokens (.dark class)**:
-  - Background: hsl(270, 80%, 4%) - deep black with violet tint
-  - Card: hsl(270, 50%, 8%) - subtle card contrast
-  - Primary: hsl(321, 85%, 60%) - bright magenta
-  - Custom shadows: --shadow-neon-magenta, --shadow-neon-violet for glow effects
-  
-- **Utility Classes (@layer components)**:
-  - `.glass-card`: Glassmorphism effect (bg-card/40 + backdrop-blur-xl + primary border)
-  - `.neon-border`: Border with magenta glow effect
-  - `.neon-glow`: Pure magenta glow shadow
-  - `.neon-glow-violet`: Violet glow shadow
-  - `.gradient-neon-bg`: Linear gradient (135deg) black→violet→magenta
-  - `.gradient-radial-neon`: Radial gradient for spotlight effect
-  
-- **Layout Components**:
-  - **AppLayout**: Background uses gradient-radial-neon for dramatic lighting
-  - **Sidebar**: gradient-neon-bg with border-r-2 border-primary neon-glow
-  - **Navigation buttons**: Active state with neon-glow, hover with border-primary/30
-  - **Header**: glass-card with glassmorphism effect
-  - **MainLayout**: max-w-7xl container with p-8 spacing
+**Component Simplifications**:
+- **AppLayout (client/src/app/layout.tsx)**: Now renders sticky header + main content area without sidebar scaffolding
+- **MainLayout (client/src/components/layout/MainLayout.tsx)**: Simplified to neutral container with Header + main content (no pl-64, no sidebar assumptions)
+- **Header Component**: Works independently without sidebar context
+
+**Clean White/Violet Theme**:
+- **Background**: Pure white hsl(0, 0%, 100%) for modern clean look
+- **Primary Accent**: Vibrant violet hsl(262, 83%, 58%) for CTAs and active states
+- **Foreground**: Near-black hsl(240, 10%, 10%) with slight violet tint for typography
+- **Borders**: Light gray hsl(240, 6%, 90%) for subtle separation
+- **Secondary/Muted**: Light gray hsl(240, 5%, 96%) for backgrounds and accents
+- **Radius**: 0.75rem for modern rounded corners
+- **Shadows**: Subtle elevation with violet-tinted opacity
+
+**Design Philosophy**:
+- Inspired by modern finance applications (Finovia-style)
+- Emphasis on whitespace, clarity, and hierarchy
+- Professional appearance with clean spacing
+- Violet accents provide visual interest without overwhelming content
 
 ### New Feature: AI-Powered Strategy PDF Generation
 **Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.

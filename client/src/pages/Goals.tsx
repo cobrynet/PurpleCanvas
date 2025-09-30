@@ -52,7 +52,7 @@ export default function Goals() {
   // Create goals mutation
   const createGoalsMutation = useMutation({
     mutationFn: async (goalsData: any) => {
-      return await apiRequest("/api/goals", "POST", goalsData);
+      return await apiRequest("POST", "/api/goals", goalsData);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });

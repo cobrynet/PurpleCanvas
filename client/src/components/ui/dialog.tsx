@@ -51,20 +51,15 @@ const DialogContent = React.forwardRef<
     };
   }, []);
 
-  // Stop propagation of keyboard events in CAPTURE phase (before Radix handles them)
+  // Completely isolate keyboard events - prevent all default behaviors and stop propagation
   const handleKeyDownCapture = (e: React.KeyboardEvent) => {
-    e.stopPropagation();
+    // Don't prevent Escape (let modal close) or Enter (let forms submit)
+    if (e.key !== 'Escape' && e.key !== 'Enter') {
+      e.stopPropagation();
+    }
   };
 
   const handleKeyUpCapture = (e: React.KeyboardEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleKeyUp = (e: React.KeyboardEvent) => {
     e.stopPropagation();
   };
 
@@ -80,8 +75,6 @@ const DialogContent = React.forwardRef<
         )}
         onKeyDownCapture={handleKeyDownCapture}
         onKeyUpCapture={handleKeyUpCapture}
-        onKeyDown={handleKeyDown}
-        onKeyUp={handleKeyUp}
         {...props}
       >
         {children}

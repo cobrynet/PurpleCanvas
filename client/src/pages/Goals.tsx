@@ -357,6 +357,8 @@ export default function Goals() {
                   placeholder="Descrivi i principali obiettivi che vuoi raggiungere (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
                   value={goalForm.objectives}
                   onChange={(e) => setGoalForm(prev => ({ ...prev, objectives: e.target.value }))}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onKeyUp={(e) => e.stopPropagation()}
                   data-testid="objectives-input"
                   rows={4}
                   required

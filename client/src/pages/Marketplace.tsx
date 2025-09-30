@@ -320,7 +320,7 @@ export default function Marketplace() {
 
   // Check if user has marketplace access
   const hasMarketplaceAccess = currentMembership && 
-    ['ORG_ADMIN', 'MARKETER', 'SALES'].includes(currentMembership.role);
+    ['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER', 'SALES'].includes(currentMembership.role);
 
   // Redirect to login if not authenticated
   useEffect(() => {

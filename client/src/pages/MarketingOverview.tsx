@@ -71,7 +71,7 @@ export default function MarketingOverview() {
 
   // Check if user has marketing access
   const hasMarketingAccess = currentMembership && 
-    ['ORG_ADMIN', 'MARKETER'].includes(currentMembership.role);
+    ['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER'].includes(currentMembership.role);
 
   // Redirect to login if not authenticated
   useEffect(() => {

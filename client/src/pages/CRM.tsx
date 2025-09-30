@@ -48,7 +48,7 @@ export default function CRM() {
 
   // Check if user has CRM access
   const hasCRMAccess = currentMembership && 
-    ['ORG_ADMIN', 'SALES'].includes(currentMembership.role);
+    ['SUPER_ADMIN', 'ORG_ADMIN', 'SALES'].includes(currentMembership.role);
 
   // Determine current view based on URL
   const currentView = location.includes('/opportunities') ? 'opportunities' : 

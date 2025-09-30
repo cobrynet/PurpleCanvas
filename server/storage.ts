@@ -87,6 +87,9 @@ export interface IStorage {
   createGoalAttachment(attachment: InsertGoalAttachment): Promise<GoalAttachment>;
   createBudgetAllocation(allocation: InsertBudgetAllocation): Promise<BudgetAllocation>;
   createOrUpdateGoalPlan(plan: InsertGoalPlan): Promise<GoalPlan>;
+  getGoalPlanByGoalId(goalId: string): Promise<GoalPlan | undefined>;
+  getTaskCountByGoalId(goalId: string): Promise<number>;
+  deleteTasksByGoalId(goalId: string): Promise<void>;
 
   // Campaign operations
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
@@ -324,6 +327,28 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return upserted;
+  }
+
+  async getGoalPlanByGoalId(goalId: string): Promise<GoalPlan | undefined> {
+    const [plan] = await db
+      .select()
+      .from(goalPlans)
+      .where(eq(goalPlans.goalId, goalId));
+    return plan;
+  }
+
+  async getTaskCountByGoalId(goalId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(marketingTasks)
+      .where(eq(marketingTasks.goalId, goalId));
+    return result[0]?.count || 0;
+  }
+
+  async deleteTasksByGoalId(goalId: string): Promise<void> {
+    await db
+      .delete(marketingTasks)
+      .where(eq(marketingTasks.goalId, goalId));
   }
 
   // Campaign operations

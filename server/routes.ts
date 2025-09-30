@@ -679,6 +679,284 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/goals/:goalId/generate-tasks', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const orgId = req.currentOrganization;
+      const { goalId } = req.params;
+      const { overwrite = false } = req.body;
+
+      // Get the GoalPlan
+      const goalPlan = await storage.getGoalPlanByGoalId(goalId);
+      if (!goalPlan) {
+        return res.status(404).json({ message: "GoalPlan not found for this goal" });
+      }
+
+      // Verify multi-tenant security: goalPlan must belong to current organization
+      if (goalPlan.organizationId !== orgId) {
+        return res.status(403).json({ message: "No access to this goal" });
+      }
+
+      // Check if tasks already exist for this goal
+      const existingTaskCount = await storage.getTaskCountByGoalId(goalId);
+      if (existingTaskCount > 0 && !overwrite) {
+        return res.json({ 
+          ok: true, 
+          skipped: true, 
+          createdCount: 0,
+          modules: {
+            marketing: 0,
+            marketing_adv: 0,
+            marketing_offline: 0,
+            crm: 0,
+          }
+        });
+      }
+
+      // If overwrite, delete existing tasks
+      if (existingTaskCount > 0 && overwrite) {
+        await storage.deleteTasksByGoalId(goalId);
+      }
+
+      // Generate tasks from spec
+      const spec = goalPlan.spec as any;
+      const tasksToCreate: any[] = [];
+
+      const startDate = new Date();
+
+      // Marketing - Organico: post settimanali
+      if (spec.marketing?.channels && spec.marketing.channels.length > 0) {
+        const postsPerWeek = spec.marketing.organicPostsPerWeek || 2;
+        const durationDays = spec.durationDays || 365;
+        const weeks = Math.max(1, Math.floor(durationDays / 7));
+        
+        // Distribuzione: lun/mer/ven per 3 post, lun/giov per 2 post
+        const daysOfWeek = postsPerWeek === 3 ? [1, 3, 5] : [1, 4]; // 1=Mon, 3=Wed, 4=Thu, 5=Fri
+        
+        for (let week = 0; week < weeks; week++) {
+          for (const targetDow of daysOfWeek) {
+            const startDow = startDate.getDay();
+            const daysUntil = (7 + targetDow - startDow) % 7 || 7; // Next occurrence of targetDow
+            const dueDate = new Date(startDate);
+            dueDate.setDate(startDate.getDate() + daysUntil + (week * 7));
+            dueDate.setHours(10, 0, 0, 0); // 10:00 AM
+            
+            for (const channel of spec.marketing.channels) {
+              tasksToCreate.push({
+                organizationId: goalPlan.organizationId,
+                goalId: goalId,
+                module: 'marketing',
+                title: `Post ${channel} settimana ${week + 1}`,
+                type: 'CONTENT',
+                subtype: 'POST',
+                assigneeId: userId,
+                status: 'BACKLOG',
+                priority: 'P2',
+                dueAt: dueDate,
+                metadata: { channel, week: week + 1, dayOfWeek: targetDow },
+              });
+            }
+          }
+        }
+      }
+
+      // Marketing - ADV: task mensili se hasSocialAds
+      if (spec.marketing?.hasSocialAds) {
+        const durationDays = spec.durationDays || 365;
+        const months = Math.ceil(durationDays / 30);
+        
+        for (let month = 0; month < months; month++) {
+          const setupDate = new Date(startDate);
+          setupDate.setMonth(startDate.getMonth() + month);
+          setupDate.setDate(1);
+          setupDate.setHours(10, 0, 0, 0);
+          
+          // Ensure setupDate is in the future
+          if (setupDate <= startDate) {
+            setupDate.setMonth(setupDate.getMonth() + 1);
+          }
+          
+          tasksToCreate.push({
+            organizationId: goalPlan.organizationId,
+            goalId: goalId,
+            module: 'marketing_adv',
+            title: `Setup/ottimizzazione campagne mese ${month + 1}`,
+            type: 'ADV',
+            subtype: 'SETUP',
+            assigneeId: userId,
+            status: 'BACKLOG',
+            priority: 'P1',
+            dueAt: setupDate,
+            metadata: { month: month + 1 },
+          });
+          
+          const reportDate = new Date(setupDate);
+          reportDate.setDate(28);
+          
+          tasksToCreate.push({
+            organizationId: goalPlan.organizationId,
+            goalId: goalId,
+            module: 'marketing_adv',
+            title: `Report mensile mese ${month + 1}`,
+            type: 'ADV',
+            subtype: 'REPORT',
+            assigneeId: userId,
+            status: 'BACKLOG',
+            priority: 'P2',
+            dueAt: reportDate,
+            metadata: { month: month + 1 },
+          });
+        }
+      }
+
+      // Marketing - Offline: task per fiere
+      if (spec.offline?.hasFairs || spec.offline?.fairsBudgetCents > 0) {
+        const durationDays = spec.durationDays || 365;
+        const quarters = Math.ceil(durationDays / 90);
+        
+        for (let quarter = 1; quarter <= quarters; quarter++) {
+          const quarterStartDate = new Date(startDate);
+          quarterStartDate.setMonth(startDate.getMonth() + (quarter - 1) * 3);
+          
+          const planDate = new Date(quarterStartDate);
+          planDate.setDate(1);
+          planDate.setHours(10, 0, 0, 0);
+          
+          tasksToCreate.push({
+            organizationId: goalPlan.organizationId,
+            goalId: goalId,
+            module: 'marketing_offline',
+            title: `Pianifica stand fiera Q${quarter}`,
+            type: 'OFFLINE',
+            subtype: 'PLANNING',
+            assigneeId: userId,
+            status: 'BACKLOG',
+            priority: 'P1',
+            dueAt: planDate,
+            metadata: { quarter },
+          });
+          
+          const materialsDate = new Date(planDate);
+          materialsDate.setDate(15);
+          
+          tasksToCreate.push({
+            organizationId: goalPlan.organizationId,
+            goalId: goalId,
+            module: 'marketing_offline',
+            title: `Materiali stampa fiera Q${quarter}`,
+            type: 'OFFLINE',
+            subtype: 'MATERIALS',
+            assigneeId: userId,
+            status: 'BACKLOG',
+            priority: 'P2',
+            dueAt: materialsDate,
+            metadata: { quarter },
+          });
+          
+          const leadCaptureDate = new Date(planDate);
+          leadCaptureDate.setMonth(planDate.getMonth() + 1);
+          
+          tasksToCreate.push({
+            organizationId: goalPlan.organizationId,
+            goalId: goalId,
+            module: 'marketing_offline',
+            title: `Lead capture flow fiera Q${quarter}`,
+            type: 'OFFLINE',
+            subtype: 'LEAD_CAPTURE',
+            assigneeId: userId,
+            status: 'BACKLOG',
+            priority: 'P1',
+            dueAt: leadCaptureDate,
+            metadata: { quarter },
+          });
+        }
+      }
+
+      // Commerciale: task prospezione, follow-up, demo
+      const durationDaysCommercial = spec.durationDays || 365;
+      const months = Math.ceil(durationDaysCommercial / 30);
+      for (let month = 1; month <= months; month++) {
+        const monthStartDate = new Date(startDate);
+        monthStartDate.setMonth(startDate.getMonth() + month - 1);
+        monthStartDate.setDate(1);
+        monthStartDate.setHours(10, 0, 0, 0);
+        
+        tasksToCreate.push({
+          organizationId: goalPlan.organizationId,
+          goalId: goalId,
+          module: 'crm',
+          title: `Prospezione mese ${month}`,
+          type: 'PROSPECTING',
+          subtype: 'OUTREACH',
+          assigneeId: userId,
+          status: 'BACKLOG',
+          priority: 'P1',
+          dueAt: monthStartDate,
+          metadata: { month },
+        });
+        
+        // Follow-up settimanali (4 per mese)
+        for (let week = 1; week <= 4; week++) {
+          const followupDate = new Date(monthStartDate);
+          followupDate.setDate(monthStartDate.getDate() + (week - 1) * 7);
+          
+          tasksToCreate.push({
+            organizationId: goalPlan.organizationId,
+            goalId: goalId,
+            module: 'crm',
+            title: `Follow-up settimanale M${month}W${week}`,
+            type: 'FOLLOWUP',
+            subtype: 'EMAIL',
+            assigneeId: userId,
+            status: 'BACKLOG',
+            priority: 'P2',
+            dueAt: followupDate,
+            metadata: { month, week },
+          });
+        }
+        
+        const demoDate = new Date(monthStartDate);
+        demoDate.setDate(15);
+        
+        tasksToCreate.push({
+          organizationId: goalPlan.organizationId,
+          goalId: goalId,
+          module: 'crm',
+          title: `Demo/Call mese ${month}`,
+          type: 'MEETING',
+          subtype: 'DEMO',
+          assigneeId: userId,
+          status: 'BACKLOG',
+          priority: 'P1',
+          dueAt: demoDate,
+          metadata: { month },
+        });
+      }
+
+      // Save all tasks
+      const createdTasks = await Promise.all(
+        tasksToCreate.map(task => storage.createMarketingTask(task))
+      );
+
+      // Count by module
+      const modules = {
+        marketing: createdTasks.filter(t => t.module === 'marketing').length,
+        marketing_adv: createdTasks.filter(t => t.module === 'marketing_adv').length,
+        marketing_offline: createdTasks.filter(t => t.module === 'marketing_offline').length,
+        crm: createdTasks.filter(t => t.module === 'crm').length,
+      };
+
+      res.json({ 
+        ok: true, 
+        createdCount: createdTasks.length,
+        modules
+      });
+    } catch (error) {
+      console.error("Error generating tasks:", error);
+      res.status(500).json({ message: "Failed to generate tasks" });
+    }
+  });
+
   // Dashboard stats
   app.get('/api/dashboard-stats', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {

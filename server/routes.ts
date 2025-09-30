@@ -581,7 +581,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req.user);
       const { useAI, ...bodyWithoutUseAI } = req.body;
-      const goalData = insertBusinessGoalSchema.parse(bodyWithoutUseAI);
+      const goalData = insertBusinessGoalSchema.parse({
+        ...bodyWithoutUseAI,
+        createdByUserId: userId,
+      });
       
       // Verify user has access to the organization
       const membership = await storage.getUserMembership(userId, goalData.organizationId);

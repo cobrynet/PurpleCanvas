@@ -12,27 +12,40 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (September 30, 2025)
 
-### Theme Modernization: Dark Mode Readability & Contrast
-**Feature**: Complete overhaul of dark theme for improved readability and modern aesthetics, including layout component modernization.
+### Theme Modernization: Futuristic Neon Design with Deep Black & Magenta
+**Feature**: Complete redesign with futuristic neon aesthetic featuring deep black backgrounds, vivid magenta/violet accents, glow effects, and glassmorphism.
 
 **Implementation**:
-- **Balanced Purple Palette**: Background changed from near-black (hsl(304, 100%, 8%)) to balanced dark purple (hsl(280, 40%, 12%))
-- **High Contrast Text**: Foreground updated to bright white (hsl(0, 0%, 98%)) ensuring WCAG AA compliance
-- **Readable Cards**: Card backgrounds lightened to hsl(280, 35%, 18%) for better content visibility
-- **Vibrant Accents**: Primary accent enhanced to vivid pink (hsl(321, 70%, 55%)) for better visibility
-- **Typography Enhancements**: Added base styles for h1-h6, paragraphs, labels with proper sizing and spacing
-- **Modern Utility Classes**: Updated theme utilities with transitions, shadows, and hover effects
-- **Layout Modernization**: Removed all hardcoded colors from AppLayout and MainLayout components to use theme tokens
+- **Deep Black Background**: Background changed to near-black hsl(270, 80%, 4%) for dramatic futuristic look
+- **Vivid Magenta Accents**: Primary accent set to hsl(321, 85%, 60%) - bright neon pink/magenta
+- **Electric Violet Secondary**: Secondary color hsl(280, 70%, 50%) for vibrant contrast
+- **Neon Glow Effects**: Custom shadow variables for magenta and violet glow (0 0 20px + 40px blur)
+- **Glassmorphism**: Card backgrounds use backdrop-blur-xl with semi-transparent bg-card/40
+- **Gradient Backgrounds**: Linear and radial gradients from black→violet→magenta for depth
+- **Luminous Borders**: Primary borders hsl(321, 85%, 60%) with neon glow effects
+- **High Contrast Text**: White (hsl(0, 0%, 98%)) on deep black for optimal readability
 
 **Technical Details**:
-- All CSS variables in client/src/index.css updated for both :root (light) and .dark classes
-- Base layer styles enhanced for semantic HTML elements
-- Component layer utilities modernized with accessibility focus
-- Muted text color (hsl(0, 0%, 75%)) ensures secondary text remains readable
-- **AppLayout.tsx**: Sidebar now uses bg-sidebar, text-sidebar-foreground, border-sidebar-border; removed hardcoded gradient from-[#390035] to-[#901d6b]
-- **Header**: Changed from bg-white/95 dark:bg-black/95 to bg-card/95 with theme tokens
-- **Avatar**: Changed from bg-[#390035] to bg-primary
-- **MainLayout.tsx**: Added max-w-7xl container for modern centered layout with improved spacing (p-8)
+- **Theme Tokens (.dark class)**:
+  - Background: hsl(270, 80%, 4%) - deep black with violet tint
+  - Card: hsl(270, 50%, 8%) - subtle card contrast
+  - Primary: hsl(321, 85%, 60%) - bright magenta
+  - Custom shadows: --shadow-neon-magenta, --shadow-neon-violet for glow effects
+  
+- **Utility Classes (@layer components)**:
+  - `.glass-card`: Glassmorphism effect (bg-card/40 + backdrop-blur-xl + primary border)
+  - `.neon-border`: Border with magenta glow effect
+  - `.neon-glow`: Pure magenta glow shadow
+  - `.neon-glow-violet`: Violet glow shadow
+  - `.gradient-neon-bg`: Linear gradient (135deg) black→violet→magenta
+  - `.gradient-radial-neon`: Radial gradient for spotlight effect
+  
+- **Layout Components**:
+  - **AppLayout**: Background uses gradient-radial-neon for dramatic lighting
+  - **Sidebar**: gradient-neon-bg with border-r-2 border-primary neon-glow
+  - **Navigation buttons**: Active state with neon-glow, hover with border-primary/30
+  - **Header**: glass-card with glassmorphism effect
+  - **MainLayout**: max-w-7xl container with p-8 spacing
 
 ### New Feature: AI-Powered Strategy PDF Generation
 **Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.

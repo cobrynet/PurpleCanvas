@@ -28,8 +28,10 @@ export function MainLayout({ children, title, icon }: MainLayoutProps) {
       {/* Sidebar removed - using main sidebar from app/layout.tsx instead */}
       <div className="flex-1 flex flex-col bg-background">
         <Header title={title} icon={icon} />
-        <main className="flex-1 p-6 overflow-auto bg-background text-foreground" data-testid="main-content">
-          {children}
+        <main className="flex-1 p-8 overflow-auto bg-background text-foreground" data-testid="main-content">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

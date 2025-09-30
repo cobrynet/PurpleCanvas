@@ -38,6 +38,15 @@ export default function Tasks() {
   // All roles can view tasks
   const hasTaskAccess = !!currentMembership;
 
+  // Read query params for initial filters
+  const urlParams = new URLSearchParams(window.location.search);
+  const goalIdParam = urlParams.get('goalId');
+  const moduleParam = urlParams.get('module');
+
+  // State for filters
+  const [goalIdFilter, setGoalIdFilter] = useState<string | null>(goalIdParam);
+  const [moduleFilter, setModuleFilter] = useState<string | null>(moduleParam);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -181,9 +190,16 @@ export default function Tasks() {
     }
   };
 
+  // Apply filters to tasks
+  const filteredTasks = tasks.filter((task: any) => {
+    if (goalIdFilter && task.goalId !== goalIdFilter) return false;
+    if (moduleFilter && task.module !== moduleFilter) return false;
+    return true;
+  });
+
   const renderListView = () => (
     <div className="space-y-4" data-testid="tasks-list-view">
-      {tasks.length === 0 ? (
+      {filteredTasks.length === 0 ? (
         <Card data-testid="no-tasks">
           <CardContent className="text-center py-12">
             <CheckSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -194,7 +210,7 @@ export default function Tasks() {
           </CardContent>
         </Card>
       ) : (
-        tasks.map((task: any) => (
+        filteredTasks.map((task: any) => (
           <Card 
             key={task.id} 
             className="hover:shadow-md transition-shadow" 
@@ -279,7 +295,7 @@ export default function Tasks() {
       { key: 'DONE', title: 'Fatto', color: 'bg-green-50 border-green-200' }
     ];
 
-    const tasksByStatus = tasks.reduce((acc: any, task: any) => {
+    const tasksByStatus = filteredTasks.reduce((acc: any, task: any) => {
       if (!acc[task.status]) acc[task.status] = [];
       acc[task.status].push(task);
       return acc;
@@ -359,7 +375,7 @@ export default function Tasks() {
       const dayDate = new Date(currentYear, currentMonth, day);
       const targetDateStr = toLocalYMD(dayDate);
       
-      return (tasks as any[]).filter((task: any) => {
+      return filteredTasks.filter((task: any) => {
         if (!task.dueAt) return false;
         const taskDate = new Date(task.dueAt);
         const taskDateStr = toLocalYMD(taskDate);
@@ -523,7 +539,42 @@ export default function Tasks() {
             <Button variant="ghost" size="sm" className="p-2" data-testid="filter-button">
               <Filter className="w-4 h-4" />
             </Button>
+          </div>
+        </div>
 
+        {/* Active Filters */}
+        {(goalIdFilter || moduleFilter) && (
+          <div className="flex gap-2 items-center flex-wrap">
+            <span className="text-sm text-muted-foreground">Filtri attivi:</span>
+            {goalIdFilter && (
+              <Badge variant="secondary" className="gap-1" data-testid="filter-chip-goalid">
+                Goal ID: {goalIdFilter.substring(0, 8)}...
+                <button 
+                  onClick={() => setGoalIdFilter(null)}
+                  className="ml-1 hover:text-destructive"
+                  data-testid="remove-goalid-filter"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+            {moduleFilter && (
+              <Badge variant="secondary" className="gap-1" data-testid="filter-chip-module">
+                Modulo: {moduleFilter}
+                <button 
+                  onClick={() => setModuleFilter(null)}
+                  className="ml-1 hover:text-destructive"
+                  data-testid="remove-module-filter"
+                >
+                  ×
+                </button>
+              </Badge>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
             <Dialog>
               <DialogTrigger asChild>
                 <Button className="flex items-center space-x-2" data-testid="new-task-button">

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail, Play, Pause, Search, Filter, Calendar, Users, Clock, MessageSquare, BarChart3, Download } from "lucide-react";
+import { UserPlus, TrendingUp, Plus, MoreHorizontal, Phone, Mail, Play, Pause, Search, Filter, Calendar, Users, Clock, MessageSquare, BarChart3, Download, CheckSquare } from "lucide-react";
+import type { BusinessGoal } from "@shared/schema";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,12 @@ export default function CRM() {
     queryKey: ["/api/organizations", currentOrg?.id, "opportunities"],
     enabled: !!currentOrg?.id && isAuthenticated && hasCRMAccess,
     retry: false,
+  });
+
+  // Fetch active goal for the organization
+  const { data: activeGoal } = useQuery<BusinessGoal | null>({
+    queryKey: ['/api/goals/active'],
+    enabled: !!currentOrg?.id && isAuthenticated,
   });
 
   // Create lead mutation
@@ -1137,6 +1144,23 @@ export default function CRM() {
       icon={Users}
     >
       <div className="space-y-6" data-testid="crm-content">
+        {/* Header with Activities button */}
+        {activeGoal && (
+          <div className="flex justify-end">
+            <Link href={`/tasks?goalId=${activeGoal.id}&module=crm`}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                data-testid="button-activities-crm"
+              >
+                <CheckSquare className="h-4 w-4" />
+                Attività
+              </Button>
+            </Link>
+          </div>
+        )}
+        
         {/* Navigation Tabs */}
         <Card>
           <CardContent className="p-4">

@@ -353,6 +353,7 @@ export default function Goals() {
                   <span>Obiettivi aziendali *</span>
                 </Label>
                 <Textarea
+                  key="objectives-textarea"
                   id="objectives"
                   placeholder="Descrivi i principali obiettivi che vuoi raggiungere (es: aumentare fatturato del 30%, acquisire 100 nuovi clienti, espandere in nuovi mercati...)"
                   value={goalForm.objectives}
@@ -362,6 +363,7 @@ export default function Goals() {
                   data-testid="objectives-input"
                   rows={4}
                   required
+                  autoComplete="off"
                 />
               </div>
 

@@ -243,7 +243,7 @@ export default function Tasks() {
   };
 
   // Apply filters to tasks
-  const filteredTasks = tasks.filter((task: any) => {
+  const filteredTasks = (tasks as any[]).filter((task: any) => {
     if (goalIdFilter && task.goalId !== goalIdFilter) return false;
     if (moduleFilter && task.module !== moduleFilter) return false;
     return true;
@@ -696,7 +696,7 @@ export default function Tasks() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Priorità</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                               <FormControl>
                                 <SelectTrigger data-testid="task-priority-select">
                                   <SelectValue placeholder="Seleziona priorità" />
@@ -733,7 +733,7 @@ export default function Tasks() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Stato</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                             <FormControl>
                               <SelectTrigger data-testid="task-status-select">
                                 <SelectValue placeholder="Seleziona stato" />

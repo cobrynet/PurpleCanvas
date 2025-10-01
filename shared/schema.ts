@@ -35,6 +35,7 @@ export const planTierEnum = pgEnum('plan_tier', ['FREE', 'STARTER', 'PROFESSIONA
 export const domainStatusEnum = pgEnum('domain_status', ['PENDING', 'VERIFIED', 'ACTIVE', 'FAILED']);
 export const deletionStatusEnum = pgEnum('deletion_status', ['PENDING', 'CONFIRMED', 'PROCESSING', 'COMPLETED']);
 export const approvalStatusEnum = pgEnum('approval_status', ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED']);
+export type ApprovalStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED';
 export const orderDeliverableStatusEnum = pgEnum('order_deliverable_status', ['PENDING', 'READY_FOR_REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'DELIVERED']);
 
 // Session storage table (required for Replit Auth)

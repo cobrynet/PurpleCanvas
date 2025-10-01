@@ -2,7 +2,19 @@
 
 ## Overview
 
-Stratikey is a comprehensive B2B multi-tenant platform designed for autonomous marketing and sales management with an integrated services marketplace. The platform enables organizations to manage campaigns, leads, opportunities, and tasks, and to access external services through a unified interface. It supports role-based access control (SUPER_ADMIN, ORG_ADMIN, MARKETER, SALES, VIEWER) and multiple organizations per user, built with a focus on performance, scalability, and user experience. The project aims to provide a robust solution for B2B marketing and sales, enhancing efficiency and strategic planning.
+Stratikey is a comprehensive B2B multi-tenant platform designed for autonomous marketing and sales management with an integrated services marketplace. The platform enables organizations to manage campaigns, leads, opportunities, and tasks, and to access external services through a unified interface. It supports role-based access control (SUPER_ADMIN, ORG_ADMIN, MARKETER, SALES, VIEWER, VENDOR) and multiple organizations per user, built with a focus on performance, scalability, and user experience. The project aims to provide a robust solution for B2B marketing and sales, enhancing efficiency and strategic planning.
+
+## Recent Updates (October 2025)
+
+### B12 - Vendor Console & SLA-Tracked Marketplace Orders
+- **Backend**: Full vendor order management system with deliverable status tracking (PENDING, READY_FOR_REVIEW, DELIVERED, CHANGES_REQUESTED, APPROVED), SLA deadline tracking, automatic notifications to ORG_ADMIN on status changes
+- **Frontend**: Vendor Console UI at `/vendor` with role-based access control, SLA visualization (met/pending/overdue), order list with status updates, comprehensive error handling
+- **RBAC**: Added VENDOR role with minimal permissions (marketplace read only, scoped to assigned orders)
+
+### B13 - Approval Workflows for Marketing Content
+- **Backend**: Approval system for assets and marketing tasks with approval status (PENDING, IN_REVIEW, APPROVED, CHANGES_REQUESTED), approval gate enforcement preventing publication of unapproved content
+- **Frontend**: ApprovalActions component for managing approvals, TaskApprovalBadge for status display, integration into marketing workflow
+- **Security**: Server-side approval gate checks before publishing social posts with linked assets
 
 ## User Preferences
 

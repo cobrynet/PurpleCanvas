@@ -8,8 +8,8 @@ import { captureAuditContext, createAuditLogger } from "./auditMiddleware";
 import { authRateLimit, uploadRateLimit, publishRateLimit, checkoutRateLimit } from "./rateLimiter";
 import { dashboardCache, listCache, kpiCache } from "./cacheMiddleware";
 import { db } from "./db";
-import { organizations } from "@shared/schema";
-import { count } from "drizzle-orm";
+import { organizations, goalAttachments, campaigns, leads, opportunities, marketingTasks, conversations } from "@shared/schema";
+import { count, eq, and, or, ilike, desc as descOrder } from "drizzle-orm";
 import { 
   insertOrganizationSchema,
   insertMembershipSchema,
@@ -23,9 +23,15 @@ import {
   insertConversationMessageSchema,
   insertAgentPresenceSchema,
   userSettingsSchema,
-  organizationSettingsSchema
+  organizationSettingsSchema,
+  insertStrategyDraftSchema
 } from "@shared/schema";
 import { assets } from "@shared/schema";
+import OpenAI from "openai";
+import { ObjectStorageService } from "./objectStorage";
+import { z } from "zod";
+
+const objectStorageService = new ObjectStorageService();
 
 // Helper function to get user ID from both OAuth and email/password sessions
 function getUserId(user: any): string {
@@ -3498,6 +3504,386 @@ Genera un piano coerente e realistico in formato JSON.`;
     } catch (error) {
       console.error('Error confirming deletion:', error);
       res.status(500).json({ error: 'Failed to confirm deletion' });
+    }
+  });
+
+  // B11 - Global Search
+  app.get('/api/search', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+    try {
+      const orgId = req.organizationId;
+      const { q } = req.query;
+
+      if (!q || typeof q !== 'string' || q.trim().length < 2) {
+        return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+      }
+
+      const searchTerm = `%${q.trim()}%`;
+      const results: any = {
+        assets: [],
+        campaigns: [],
+        leads: [],
+        opportunities: [],
+        tasks: [],
+        conversations: [],
+      };
+
+      // Search assets
+      try {
+        results.assets = await db
+          .select({
+            id: assets.id,
+            title: assets.title,
+            type: assets.type,
+            url: assets.url,
+            folder: assets.folder,
+            createdAt: assets.createdAt,
+          })
+          .from(assets)
+          .where(
+            and(
+              eq(assets.organizationId, orgId),
+              or(
+                ilike(assets.title, searchTerm),
+                ilike(assets.folder, searchTerm)
+              )
+            )
+          )
+          .limit(10)
+          .orderBy(descOrder(assets.createdAt));
+      } catch (error) {
+        console.error('Error searching assets:', error);
+      }
+
+      // Search campaigns
+      try {
+        results.campaigns = await db
+          .select({
+            id: campaigns.id,
+            name: campaigns.name,
+            description: campaigns.description,
+            status: campaigns.status,
+            startAt: campaigns.startAt,
+            endAt: campaigns.endAt,
+          })
+          .from(campaigns)
+          .where(
+            and(
+              eq(campaigns.organizationId, orgId),
+              or(
+                ilike(campaigns.name, searchTerm),
+                ilike(campaigns.description, searchTerm)
+              )
+            )
+          )
+          .limit(10)
+          .orderBy(descOrder(campaigns.createdAt));
+      } catch (error) {
+        console.error('Error searching campaigns:', error);
+      }
+
+      // Search leads
+      try {
+        results.leads = await db
+          .select({
+            id: leads.id,
+            name: leads.name,
+            email: leads.email,
+            company: leads.company,
+            status: leads.status,
+            createdAt: leads.createdAt,
+          })
+          .from(leads)
+          .where(
+            and(
+              eq(leads.organizationId, orgId),
+              or(
+                ilike(leads.name, searchTerm),
+                ilike(leads.email, searchTerm),
+                ilike(leads.company, searchTerm)
+              )
+            )
+          )
+          .limit(10)
+          .orderBy(descOrder(leads.createdAt));
+      } catch (error) {
+        console.error('Error searching leads:', error);
+      }
+
+      // Search opportunities
+      try {
+        results.opportunities = await db
+          .select({
+            id: opportunities.id,
+            title: opportunities.title,
+            description: opportunities.description,
+            value: opportunities.value,
+            stage: opportunities.stage,
+            createdAt: opportunities.createdAt,
+          })
+          .from(opportunities)
+          .where(
+            and(
+              eq(opportunities.organizationId, orgId),
+              or(
+                ilike(opportunities.title, searchTerm),
+                ilike(opportunities.description, searchTerm)
+              )
+            )
+          )
+          .limit(10)
+          .orderBy(descOrder(opportunities.createdAt));
+      } catch (error) {
+        console.error('Error searching opportunities:', error);
+      }
+
+      // Search tasks
+      try {
+        results.tasks = await db
+          .select({
+            id: marketingTasks.id,
+            title: marketingTasks.title,
+            description: marketingTasks.description,
+            status: marketingTasks.status,
+            priority: marketingTasks.priority,
+            dueDate: marketingTasks.dueDate,
+          })
+          .from(marketingTasks)
+          .where(
+            and(
+              eq(marketingTasks.organizationId, orgId),
+              or(
+                ilike(marketingTasks.title, searchTerm),
+                ilike(marketingTasks.description, searchTerm)
+              )
+            )
+          )
+          .limit(10)
+          .orderBy(descOrder(marketingTasks.createdAt));
+      } catch (error) {
+        console.error('Error searching tasks:', error);
+      }
+
+      // Search conversations
+      try {
+        results.conversations = await db
+          .select({
+            id: conversations.id,
+            customerName: conversations.customerName,
+            customerEmail: conversations.customerEmail,
+            lastMessage: conversations.lastMessage,
+            status: conversations.status,
+            createdAt: conversations.createdAt,
+          })
+          .from(conversations)
+          .where(
+            or(
+              ilike(conversations.customerName, searchTerm),
+              ilike(conversations.customerEmail, searchTerm),
+              ilike(conversations.lastMessage, searchTerm)
+            )
+          )
+          .limit(10)
+          .orderBy(descOrder(conversations.createdAt));
+      } catch (error) {
+        console.error('Error searching conversations:', error);
+      }
+
+      // Calculate total results
+      const totalResults = Object.values(results).reduce((sum: number, arr: any[]) => sum + arr.length, 0);
+
+      res.json({
+        query: q,
+        totalResults,
+        results,
+      });
+    } catch (error) {
+      console.error('Error in global search:', error);
+      res.status(500).json({ error: 'Search failed' });
+    }
+  });
+
+  // B10 - AI Strategy Generation
+  app.post('/api/ai/strategy', isAuthenticated, withCurrentOrganization, requirePermission('goals', 'write'), captureAuditContext, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const orgId = req.organizationId;
+      
+      // Validate input
+      const aiStrategySchema = insertStrategyDraftSchema.pick({ goalId: true }).extend({
+        additionalContext: z.string().optional(),
+      });
+      
+      const validationResult = aiStrategySchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: 'Invalid input',
+          details: validationResult.error.errors 
+        });
+      }
+
+      const { goalId, additionalContext } = validationResult.data;
+
+      // Fetch goal details
+      const goals = await storage.getBusinessGoals(orgId);
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) {
+        return res.status(404).json({ error: 'Goal not found' });
+      }
+
+      // Fetch attachments (PDFs)
+      const attachments = await db
+        .select()
+        .from(goalAttachments)
+        .where(eq(goalAttachments.goalId, goalId));
+
+      let pdfText = '';
+      const sourceDocuments: any[] = [];
+
+      // Parse PDFs
+      for (const attachment of attachments) {
+        if (attachment.mimeType === 'application/pdf' && attachment.fileUrl) {
+          try {
+            const file = await objectStorageService.getObjectEntityFile({
+              entityType: 'goal_attachment',
+              entityId: attachment.id,
+            });
+
+            if (file) {
+              const buffer = await new Promise<Buffer>((resolve, reject) => {
+                const chunks: Buffer[] = [];
+                const stream = file.createReadStream();
+                stream.on('data', chunk => chunks.push(chunk));
+                stream.on('end', () => resolve(Buffer.concat(chunks)));
+                stream.on('error', reject);
+              });
+
+              const pdfParse = (await import('pdf-parse')).default;
+              const pdfData = await pdfParse(buffer);
+              pdfText += `\n\n--- ${attachment.fileName} ---\n${pdfData.text}`;
+              sourceDocuments.push({
+                fileName: attachment.fileName,
+                pageCount: pdfData.numpages,
+              });
+            }
+          } catch (error) {
+            console.error(`Error parsing PDF ${attachment.fileName}:`, error);
+          }
+        }
+      }
+
+      // Initialize OpenAI
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      // Generate AI strategy
+      const prompt = `Sei un consulente strategico B2B esperto in marketing e vendite. Analizza i seguenti dati e genera una strategia completa.
+
+OBIETTIVO AZIENDALE:
+- Titolo: ${goal.title}
+- Descrizione: ${goal.description || 'Non specificata'}
+- Budget totale: €${goal.totalBudget || 0}
+- Pipeline vendite: ${goal.salesPipeline || 'Non specificata'}
+- Target geografico: ${goal.targetMarket || 'Non specificato'}
+- Fiere e eventi: ${goal.events || 'Nessuno'}
+
+CONTESTO AGGIUNTIVO:
+${additionalContext || 'Nessun contesto aggiuntivo fornito'}
+
+DOCUMENTI ANALIZZATI:
+${pdfText || 'Nessun documento PDF allegato'}
+
+COMPITO:
+1. SINTESI STRATEGICA: Scrivi una sintesi di 2-3 paragrafi che integri marketing e vendite
+2. STRATEGIA MARKETING: Specifica tattica di marketing (canali, contenuti, campagne)
+3. STRATEGIA COMMERCIALE: Specifica approccio vendite (prospezione, qualificazione, chiusura)
+4. ROADMAP TRIMESTRALE: Suddividi le attività per trimestre (Q1, Q2, Q3, Q4)
+5. TASK LIST: Genera 8-12 task concreti con:
+   - title: Titolo del task
+   - description: Descrizione dettagliata
+   - priority: P0 (critico), P1 (alto), P2 (medio), P3 (basso)
+   - dueDate: Data scadenza (formato YYYY-MM-DD)
+   - type: SOCIAL_PUBLISHING, CONTENT, LEAD_GEN, PLANNING, o AUTOMATION
+
+Rispondi SOLO con un JSON valido in questo formato:
+{
+  "strategicSummary": "...",
+  "marketingStrategy": "...",
+  "salesStrategy": "...",
+  "quarterlyRoadmap": {
+    "Q1": ["attività 1", "attività 2"],
+    "Q2": ["..."],
+    "Q3": ["..."],
+    "Q4": ["..."]
+  },
+  "tasks": [
+    {
+      "title": "...",
+      "description": "...",
+      "priority": "P0",
+      "dueDate": "2025-04-15",
+      "type": "SOCIAL_PUBLISHING"
+    }
+  ]
+}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      });
+
+      const responseText = completion.choices[0]?.message?.content;
+      if (!responseText) {
+        return res.status(500).json({ error: 'Failed to generate strategy' });
+      }
+
+      // Parse JSON response
+      const strategyData = JSON.parse(responseText);
+
+      // Save strategy draft
+      const strategyDraft = await storage.createStrategyDraft({
+        organizationId: orgId,
+        goalId,
+        title: `Strategia: ${goal.title}`,
+        strategicSummary: strategyData.strategicSummary,
+        marketingStrategy: strategyData.marketingStrategy,
+        salesStrategy: strategyData.salesStrategy,
+        quarterlyRoadmap: strategyData.quarterlyRoadmap,
+        generatedTasks: strategyData.tasks,
+        sourceDocuments,
+        createdByUserId: userId,
+      });
+
+      // Create marketing tasks
+      const createdTasks = [];
+      for (const task of strategyData.tasks) {
+        try {
+          const newTask = await storage.createMarketingTask({
+            organizationId: orgId,
+            goalId,
+            title: task.title,
+            description: task.description,
+            priority: task.priority,
+            status: 'TODO',
+            dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+            taskType: task.type || 'PLANNING',
+            createdBy: userId,
+          });
+          createdTasks.push(newTask);
+        } catch (error) {
+          console.error('Error creating task:', error);
+        }
+      }
+
+      res.json({
+        strategyDraft,
+        createdTasksCount: createdTasks.length,
+        message: `Strategia generata con successo! Creati ${createdTasks.length} task.`,
+      });
+    } catch (error) {
+      console.error('Error generating AI strategy:', error);
+      res.status(500).json({ error: 'Failed to generate strategy' });
     }
   });
 

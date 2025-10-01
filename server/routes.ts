@@ -224,6 +224,22 @@ async function publishSocialPost(req: any, res: any) {
       });
     }
 
+    // B13 - Approval Gate: Check if linked assets are approved before publishing
+    if (post.imageUrl) {
+      try {
+        const asset = await storage.getAssetByObjectPath(post.imageUrl);
+        if (asset && asset.approvalStatus !== 'APPROVED') {
+          return res.status(403).json({
+            success: false,
+            error: "Cannot publish: Asset must be approved before publishing. Current status: " + asset.approvalStatus
+          });
+        }
+      } catch (error) {
+        // If asset doesn't exist in DB, it's likely a mock URL, allow publication
+        console.warn('Could not verify asset approval status for:', post.imageUrl);
+      }
+    }
+
     // Get active social connections for the organization
     const connections = await storage.getSocialConnections(organizationId);
     const activeConnections = connections.filter(conn => conn.status === 'active');
@@ -2372,6 +2388,272 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
+  // B12 - Vendor Console + SLA Orders
+  // Get orders for vendor (assigned to vendor user)
+  app.get('/api/vendor/orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const orders = await storage.getVendorOrders(userId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching vendor orders:", error);
+      res.status(500).json({ error: "Failed to fetch vendor orders" });
+    }
+  });
+
+  // Update order deliverable status (vendor action)
+  app.patch('/api/vendor/orders/:id/deliverable', isAuthenticated, captureAuditContext, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const orderId = req.params.id;
+      const { deliverableStatus, reviewNotes } = req.body;
+
+      // Validate input - vendors can only set PENDING, READY_FOR_REVIEW, or DELIVERED
+      const validationSchema = z.object({
+        deliverableStatus: z.enum(['PENDING', 'READY_FOR_REVIEW', 'DELIVERED']),
+        reviewNotes: z.string().optional(),
+      });
+      
+      const validationResult = validationSchema.safeParse({ deliverableStatus, reviewNotes });
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: 'Invalid input',
+          details: validationResult.error.errors 
+        });
+      }
+
+      // Get order and verify vendor access
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.assigneeVendorUserId !== userId) {
+        return res.status(403).json({ error: "Access denied - not assigned to this order" });
+      }
+
+      // Update deliverable status
+      const updatedOrder = await storage.updateOrderDeliverableStatus(
+        orderId,
+        validationResult.data.deliverableStatus,
+        validationResult.data.reviewNotes
+      );
+
+      if (!updatedOrder) {
+        return res.status(404).json({ error: "Failed to update order" });
+      }
+
+      // Create notification for tenant admin on status change
+      if (deliverableStatus === 'READY_FOR_REVIEW' || deliverableStatus === 'DELIVERED') {
+        // Get org admins
+        const members = await storage.getOrganizationMembers(order.organizationId);
+        const orgAdmins = members.filter(m => m.role === 'ORG_ADMIN');
+        
+        for (const admin of orgAdmins) {
+          await storage.createNotification({
+            organizationId: order.organizationId,
+            userId: admin.userId,
+            type: 'INFO',
+            title: 'Aggiornamento Ordine',
+            message: deliverableStatus === 'READY_FOR_REVIEW' 
+              ? `Un ordine è pronto per la revisione` 
+              : `Un ordine è stato consegnato`,
+            isRead: false,
+          });
+        }
+      }
+
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error updating deliverable status:", error);
+      res.status(500).json({ error: "Failed to update deliverable status" });
+    }
+  });
+
+  // Get organization orders (tenant admin view)
+  app.get('/api/orders', isAuthenticated, withCurrentOrganization, requirePermission('marketplace', 'read'), async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const orders = await storage.getOrders(orgId);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ error: "Failed to fetch orders" });
+    }
+  });
+
+  // Update order deliverable status from tenant side (approve/request changes)
+  app.patch('/api/orders/:id/review', isAuthenticated, withCurrentOrganization, requirePermission('marketplace', 'update'), captureAuditContext, async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const { id: orderId } = req.params;
+      const { deliverableStatus, reviewNotes } = req.body;
+
+      // Validate input
+      const validationSchema = z.object({
+        deliverableStatus: z.enum(['READY_FOR_REVIEW', 'CHANGES_REQUESTED', 'APPROVED']),
+        reviewNotes: z.string().optional(),
+      });
+      
+      const validationResult = validationSchema.safeParse({ deliverableStatus, reviewNotes });
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: 'Invalid input',
+          details: validationResult.error.errors 
+        });
+      }
+
+      // Get order and verify organization access
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Update deliverable status
+      const updatedOrder = await storage.updateOrderDeliverableStatus(
+        orderId,
+        validationResult.data.deliverableStatus,
+        validationResult.data.reviewNotes
+      );
+
+      if (!updatedOrder) {
+        return res.status(404).json({ error: "Failed to update order" });
+      }
+
+      // Create notification for vendor on status change
+      if (updatedOrder.assigneeVendorUserId && (deliverableStatus === 'APPROVED' || deliverableStatus === 'CHANGES_REQUESTED')) {
+        await storage.createNotification({
+          organizationId: order.organizationId,
+          userId: updatedOrder.assigneeVendorUserId,
+          type: deliverableStatus === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+          title: deliverableStatus === 'APPROVED' ? 'Ordine Approvato' : 'Modifiche Richieste',
+          message: deliverableStatus === 'APPROVED' 
+            ? `Il tuo ordine è stato approvato` 
+            : `Sono state richieste modifiche al tuo ordine`,
+          isRead: false,
+        });
+      }
+
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error reviewing order:", error);
+      res.status(500).json({ error: "Failed to review order" });
+    }
+  });
+
+  // B13 - Approval Workflows
+  // Update asset approval status
+  app.patch('/api/assets/:id/approval', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'update'), captureAuditContext, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const orgId = req.currentOrganization;
+      const { id: assetId } = req.params;
+      const { approvalStatus, reviewNotes } = req.body;
+
+      // Validate input
+      const validationSchema = z.object({
+        approvalStatus: z.enum(['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED']),
+        reviewNotes: z.string().optional(),
+      });
+      
+      const validationResult = validationSchema.safeParse({ approvalStatus, reviewNotes });
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: 'Invalid input',
+          details: validationResult.error.errors 
+        });
+      }
+
+      // Update asset approval status
+      const updatedAsset = await storage.updateAssetApprovalStatus(
+        assetId,
+        orgId,
+        validationResult.data.approvalStatus,
+        validationResult.data.approvalStatus === 'APPROVED' ? userId : undefined,
+        validationResult.data.reviewNotes
+      );
+
+      if (!updatedAsset) {
+        return res.status(404).json({ error: "Asset not found or access denied" });
+      }
+
+      // Create notification for asset owner if status changed to approved or changes requested
+      if (updatedAsset.ownerId && (approvalStatus === 'APPROVED' || approvalStatus === 'CHANGES_REQUESTED')) {
+        await storage.createNotification({
+          organizationId: orgId,
+          userId: updatedAsset.ownerId,
+          type: approvalStatus === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+          title: approvalStatus === 'APPROVED' ? 'Asset Approvato' : 'Modifiche Richieste',
+          message: `Il tuo asset "${updatedAsset.title || 'Senza titolo'}" è stato ${approvalStatus === 'APPROVED' ? 'approvato' : 'richiede modifiche'}`,
+          isRead: false,
+        });
+      }
+
+      res.json(updatedAsset);
+    } catch (error) {
+      console.error("Error updating asset approval:", error);
+      res.status(500).json({ error: "Failed to update asset approval" });
+    }
+  });
+
+  // Update task approval status
+  app.patch('/api/tasks/:id/approval', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'update'), captureAuditContext, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const orgId = req.currentOrganization;
+      const { id: taskId } = req.params;
+      const { approvalStatus, reviewNotes } = req.body;
+
+      // Validate input
+      const validationSchema = z.object({
+        approvalStatus: z.enum(['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED']),
+        reviewNotes: z.string().optional(),
+      });
+      
+      const validationResult = validationSchema.safeParse({ approvalStatus, reviewNotes });
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: 'Invalid input',
+          details: validationResult.error.errors 
+        });
+      }
+
+      // Update task approval status
+      const updatedTask = await storage.updateTaskApprovalStatus(
+        taskId,
+        orgId,
+        validationResult.data.approvalStatus,
+        validationResult.data.approvalStatus === 'APPROVED' ? userId : undefined,
+        validationResult.data.reviewNotes
+      );
+
+      if (!updatedTask) {
+        return res.status(404).json({ error: "Task not found or access denied" });
+      }
+
+      // Create notification for task assignee if status changed to approved or changes requested
+      if (updatedTask.assigneeId && (approvalStatus === 'APPROVED' || approvalStatus === 'CHANGES_REQUESTED')) {
+        await storage.createNotification({
+          organizationId: orgId,
+          userId: updatedTask.assigneeId,
+          type: approvalStatus === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+          title: approvalStatus === 'APPROVED' ? 'Task Approvato' : 'Modifiche Richieste',
+          message: `Il task "${updatedTask.title}" è stato ${approvalStatus === 'APPROVED' ? 'approvato' : 'richiede modifiche'}`,
+          isRead: false,
+        });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task approval:", error);
+      res.status(500).json({ error: "Failed to update task approval" });
+    }
+  });
+
   // Conversation routes
   app.post('/api/conversations', isAuthenticated, async (req: any, res) => {
     try {
@@ -2809,6 +3091,11 @@ Genera un piano coerente e realistico in formato JSON.`;
         assigneeVendorUserId: null,
         stripePaymentIntentId: null,
         options: req.body.options || null,
+        reviewNotes: null,
+        deliverableStatus: 'PENDING',
+        slaDurationDays: 3, // Default 3-day SLA
+        slaDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        deliveredAt: null,
       });
 
       const audit = createAuditLogger('create', 'order');

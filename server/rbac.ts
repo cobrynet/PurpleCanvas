@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import { sendForbidden } from './errors';
 
-export type Role = 'SUPER_ADMIN' | 'ORG_ADMIN' | 'MARKETER' | 'SALES' | 'VIEWER';
+export type Role = 'SUPER_ADMIN' | 'ORG_ADMIN' | 'MARKETER' | 'SALES' | 'VIEWER' | 'VENDOR';
 export type Module = 'marketing' | 'marketing_adv' | 'marketing_offline' | 'crm' | 'goals' | 'marketplace' | 'settings' | 'chat';
 export type Action = 'read' | 'create' | 'update' | 'delete';
 
@@ -55,6 +55,16 @@ const rolePermissions: Record<Role, Record<Module, Action[]>> = {
     marketplace: ['read'],
     settings: ['read'],
     chat: ['read'],
+  },
+  VENDOR: {
+    marketing: [],
+    marketing_adv: [],
+    marketing_offline: [],
+    crm: [],
+    goals: [],
+    marketplace: ['read'], // Vendors can only read marketplace orders assigned to them
+    settings: ['read'],
+    chat: ['read', 'create', 'update'],
   },
 };
 

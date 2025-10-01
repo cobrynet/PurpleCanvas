@@ -64,6 +64,18 @@ import {
   type InsertGoalPlan,
   type AuditLog,
   type InsertAuditLog,
+  subscriptionPlans,
+  organizationSubscriptions,
+  orgDomains,
+  userDeletionRequests,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
+  type OrganizationSubscription,
+  type InsertOrganizationSubscription,
+  type OrgDomain,
+  type InsertOrgDomain,
+  type UserDeletionRequest,
+  type InsertUserDeletionRequest,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull, sql } from "drizzle-orm";
@@ -215,6 +227,29 @@ export interface IStorage {
   // Audit log operations
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(orgId: string, filters?: { userId?: string; entity?: string; action?: string }): Promise<AuditLog[]>;
+
+  // B7 - Subscription operations
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
+  getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined>;
+  createOrganizationSubscription(subscription: InsertOrganizationSubscription): Promise<OrganizationSubscription>;
+  getOrganizationSubscription(orgId: string): Promise<OrganizationSubscription | undefined>;
+  updateOrganizationSubscription(id: string, updates: Partial<OrganizationSubscription>): Promise<OrganizationSubscription | undefined>;
+  
+  // B8 - Custom domain operations
+  createOrgDomain(domain: InsertOrgDomain): Promise<OrgDomain>;
+  getOrgDomains(orgId: string): Promise<OrgDomain[]>;
+  getOrgDomain(id: string): Promise<OrgDomain | undefined>;
+  getOrgDomainByDomain(domain: string): Promise<OrgDomain | undefined>;
+  updateOrgDomain(id: string, updates: Partial<OrgDomain>): Promise<OrgDomain | undefined>;
+  
+  // B9 - GDPR operations
+  createUserDeletionRequest(request: InsertUserDeletionRequest): Promise<UserDeletionRequest>;
+  getUserDeletionRequest(userId: string): Promise<UserDeletionRequest | undefined>;
+  getUserDeletionRequestByToken(token: string): Promise<UserDeletionRequest | undefined>;
+  updateUserDeletionRequest(id: string, updates: Partial<UserDeletionRequest>): Promise<UserDeletionRequest | undefined>;
+  exportUserData(userId: string): Promise<any>;
+  exportOrganizationData(orgId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1292,6 +1327,171 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(auditLogs.createdAt))
       .limit(1000);
+  }
+
+  // B7 - Subscription operations
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [created] = await db.insert(subscriptionPlans).values(plan).returning();
+    return created;
+  }
+
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return plan;
+  }
+
+  async createOrganizationSubscription(subscription: InsertOrganizationSubscription): Promise<OrganizationSubscription> {
+    const [created] = await db.insert(organizationSubscriptions).values(subscription).returning();
+    return created;
+  }
+
+  async getOrganizationSubscription(orgId: string): Promise<OrganizationSubscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(organizationSubscriptions)
+      .where(eq(organizationSubscriptions.organizationId, orgId))
+      .orderBy(desc(organizationSubscriptions.createdAt))
+      .limit(1);
+    return subscription;
+  }
+
+  async updateOrganizationSubscription(id: string, updates: Partial<OrganizationSubscription>): Promise<OrganizationSubscription | undefined> {
+    const [updated] = await db
+      .update(organizationSubscriptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(organizationSubscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  // B8 - Custom domain operations
+  async createOrgDomain(domain: InsertOrgDomain): Promise<OrgDomain> {
+    const [created] = await db.insert(orgDomains).values(domain).returning();
+    return created;
+  }
+
+  async getOrgDomains(orgId: string): Promise<OrgDomain[]> {
+    return await db
+      .select()
+      .from(orgDomains)
+      .where(eq(orgDomains.organizationId, orgId))
+      .orderBy(desc(orgDomains.createdAt));
+  }
+
+  async getOrgDomain(id: string): Promise<OrgDomain | undefined> {
+    const [domain] = await db.select().from(orgDomains).where(eq(orgDomains.id, id));
+    return domain;
+  }
+
+  async getOrgDomainByDomain(domain: string): Promise<OrgDomain | undefined> {
+    const [result] = await db.select().from(orgDomains).where(eq(orgDomains.domain, domain));
+    return result;
+  }
+
+  async updateOrgDomain(id: string, updates: Partial<OrgDomain>): Promise<OrgDomain | undefined> {
+    const [updated] = await db
+      .update(orgDomains)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(orgDomains.id, id))
+      .returning();
+    return updated;
+  }
+
+  // B9 - GDPR operations
+  async createUserDeletionRequest(request: InsertUserDeletionRequest): Promise<UserDeletionRequest> {
+    const [created] = await db.insert(userDeletionRequests).values(request).returning();
+    return created;
+  }
+
+  async getUserDeletionRequest(userId: string): Promise<UserDeletionRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(userDeletionRequests)
+      .where(eq(userDeletionRequests.userId, userId))
+      .orderBy(desc(userDeletionRequests.createdAt))
+      .limit(1);
+    return request;
+  }
+
+  async getUserDeletionRequestByToken(token: string): Promise<UserDeletionRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(userDeletionRequests)
+      .where(eq(userDeletionRequests.confirmationToken, token));
+    return request;
+  }
+
+  async updateUserDeletionRequest(id: string, updates: Partial<UserDeletionRequest>): Promise<UserDeletionRequest | undefined> {
+    const [updated] = await db
+      .update(userDeletionRequests)
+      .set(updates)
+      .where(eq(userDeletionRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async exportUserData(userId: string): Promise<any> {
+    const user = await this.getUser(userId);
+    if (!user) return null;
+
+    const userOrgs = await this.getUserOrganizations(userId);
+    const userMemberships = await Promise.all(
+      userOrgs.map(org => this.getUserMembership(userId, org.id))
+    );
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        createdAt: user.createdAt,
+      },
+      organizations: userOrgs.map(org => ({
+        id: org.id,
+        name: org.name,
+        role: org.membership.role,
+        joinedAt: org.membership.createdAt,
+      })),
+      exportedAt: new Date().toISOString(),
+    };
+  }
+
+  async exportOrganizationData(orgId: string): Promise<any> {
+    const organization = await this.getOrganization(orgId);
+    if (!organization) return null;
+
+    const members = await this.getOrganizationMembers(orgId);
+    const campaigns = await this.getCampaigns(orgId);
+    const leads = await this.getLeads(orgId);
+    const opportunities = await this.getOpportunities(orgId);
+    const tasks = await this.getMarketingTasks(orgId);
+    const goals = await this.getBusinessGoals(orgId);
+
+    return {
+      organization: {
+        id: organization.id,
+        name: organization.name,
+        plan: organization.plan,
+        createdAt: organization.createdAt,
+      },
+      members: members.map(m => ({
+        userId: m.userId,
+        email: m.user.email,
+        role: m.role,
+        joinedAt: m.createdAt,
+      })),
+      campaigns: campaigns.length,
+      leads: leads.length,
+      opportunities: opportunities.length,
+      tasks: tasks.length,
+      goals: goals.length,
+      exportedAt: new Date().toISOString(),
+    };
   }
 }
 

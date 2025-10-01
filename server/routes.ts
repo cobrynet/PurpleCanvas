@@ -501,11 +501,66 @@ async function generateInitialTasks(goalData: any, userId: string): Promise<any[
   return tasks;
 }
 
+async function checkSubscriptionLimit(orgId: string, limitType: 'maxUsers' | 'maxAssets' | 'maxPostsPerMonth'): Promise<{ allowed: boolean; limit: number; current: number; message?: string }> {
+  try {
+    const subscription = await storage.getOrganizationSubscription(orgId);
+    
+    if (!subscription || !subscription.planId) {
+      return { allowed: true, limit: -1, current: 0 };
+    }
+
+    const plan = await storage.getSubscriptionPlan(subscription.planId);
+    if (!plan) {
+      return { allowed: true, limit: -1, current: 0 };
+    }
+
+    const limit = plan[limitType];
+    if (limit === -1) {
+      return { allowed: true, limit: -1, current: 0 };
+    }
+
+    let current = 0;
+
+    if (limitType === 'maxUsers') {
+      const members = await storage.getOrganizationMembers(orgId);
+      current = members.length;
+    } else if (limitType === 'maxAssets') {
+      const assets = await storage.getAssets(orgId);
+      current = assets.length;
+    } else if (limitType === 'maxPostsPerMonth') {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const tasks = await storage.getMarketingTasks(orgId);
+      current = tasks.filter(t => {
+        const isPublishablePost = ['SOCIAL_PUBLISHING', 'CONTENT'].includes(t.type);
+        const isInCurrentMonth = new Date(t.createdAt) >= startOfMonth;
+        return isPublishablePost && isInCurrentMonth;
+      }).length;
+    }
+
+    if (current >= limit) {
+      return {
+        allowed: false,
+        limit,
+        current,
+        message: `${limitType} limit reached (${current}/${limit}). Upgrade your plan to continue.`
+      };
+    }
+
+    return { allowed: true, limit, current };
+  } catch (error) {
+    console.error('Error checking subscription limit:', error);
+    return { allowed: true, limit: -1, current: 0 };
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize Stripe (only if API key is available)
   let stripe: Stripe | null = null;
   if (process.env.STRIPE_SECRET_KEY) {
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16',
+    });
   }
 
   // Health check endpoint
@@ -1802,6 +1857,25 @@ Genera un piano coerente e realistico in formato JSON.`;
         ...req.body,
         organizationId: orgId,
       });
+
+      // Check subscription limit for publishable posts (social/content tasks)
+      const isPublishablePost = ['SOCIAL_PUBLISHING', 'CONTENT'].includes(taskData.type);
+      if (isPublishablePost) {
+        const limitCheck = await checkSubscriptionLimit(orgId, 'maxPostsPerMonth');
+        if (!limitCheck.allowed) {
+          const audit = createAuditLogger('create', 'task');
+          await audit(req, orgId, 'limit-exceeded', { 
+            reason: limitCheck.message,
+            current: limitCheck.current,
+            limit: limitCheck.limit
+          });
+          return res.status(422).json({ 
+            error: limitCheck.message,
+            current: limitCheck.current,
+            limit: limitCheck.limit
+          });
+        }
+      }
       
       const task = await storage.createMarketingTaskWithAutomation(taskData);
       res.json(task);
@@ -2197,6 +2271,22 @@ Genera un piano coerente e realistico in formato JSON.`;
       } catch (error) {
         console.error('Error setting ACL policy:', error);
         // Continue with asset creation even if ACL fails
+      }
+
+      // Check subscription limit before creating asset
+      const limitCheck = await checkSubscriptionLimit(orgId, 'maxAssets');
+      if (!limitCheck.allowed) {
+        const audit = createAuditLogger('create', 'asset');
+        await audit(req, orgId, 'limit-exceeded', { 
+          reason: limitCheck.message,
+          current: limitCheck.current,
+          limit: limitCheck.limit
+        });
+        return res.status(422).json({ 
+          error: limitCheck.message,
+          current: limitCheck.current,
+          limit: limitCheck.limit
+        });
       }
 
       // Create asset data with normalized object path for serving
@@ -3153,6 +3243,261 @@ Genera un piano coerente e realistico in formato JSON.`;
     } catch (error) {
       console.error('Error getting organization members:', error);
       res.status(500).json({ error: 'Failed to get organization members' });
+    }
+  });
+
+  // B7 - Subscription & Billing Routes
+  app.get('/api/billing/plans', isAuthenticated, async (req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      res.status(500).json({ error: 'Failed to fetch subscription plans' });
+    }
+  });
+
+  app.get('/api/billing/subscription', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'read'), async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const subscription = await storage.getOrganizationSubscription(orgId);
+      
+      if (!subscription) {
+        return res.json({ subscription: null });
+      }
+
+      const plan = await storage.getSubscriptionPlan(subscription.planId);
+      res.json({ subscription, plan });
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+      res.status(500).json({ error: 'Failed to fetch subscription' });
+    }
+  });
+
+  app.post('/api/billing/create-portal-session', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'update'), async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: 'Stripe not configured' });
+      }
+
+      const orgId = req.currentOrganization;
+      const membership = req.currentMembership;
+      
+      if (!['SUPER_ADMIN', 'ORG_ADMIN'].includes(membership?.role)) {
+        return res.status(403).json({ error: 'Only admins can access billing portal' });
+      }
+
+      const org = await storage.getOrganization(orgId);
+      
+      if (!org?.billingCustomerId) {
+        return res.status(400).json({ error: 'No billing customer found' });
+      }
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: org.billingCustomerId,
+        return_url: `${req.headers.origin || 'http://localhost:5000'}/settings?tab=billing`,
+      });
+
+      const audit = createAuditLogger('read', 'billing');
+      await audit(req, orgId, org.billingCustomerId, { action: 'portal_session_created' });
+
+      res.json({ url: portalSession.url });
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      res.status(500).json({ error: 'Failed to create portal session' });
+    }
+  });
+
+  // B8 - Custom Domain Routes
+  app.get('/api/domains', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'read'), async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const domains = await storage.getOrgDomains(orgId);
+      res.json(domains);
+    } catch (error) {
+      console.error('Error fetching domains:', error);
+      res.status(500).json({ error: 'Failed to fetch domains' });
+    }
+  });
+
+  app.post('/api/domains', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'create'), async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      
+      const domainSchema = z.object({
+        domain: z.string().min(3).regex(/^[a-zA-Z0-9][a-zA-Z0-9-_.]*[a-zA-Z0-9]$/, 'Invalid domain format'),
+      });
+
+      const parsed = domainSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid domain', details: parsed.error.errors });
+      }
+
+      const { domain } = parsed.data;
+
+      const existing = await storage.getOrgDomainByDomain(domain);
+      if (existing) {
+        return res.status(400).json({ error: 'Domain already exists' });
+      }
+
+      const verificationToken = Math.random().toString(36).substring(2, 15);
+      const cnameTarget = `${orgId.substring(0, 8)}.stratikey-app.repl.co`;
+
+      const newDomain = await storage.createOrgDomain({
+        organizationId: orgId,
+        domain,
+        status: 'PENDING',
+        cnameTarget,
+        verificationToken,
+      });
+
+      const audit = createAuditLogger('create', 'domain');
+      await audit(req, orgId, newDomain.id, { domain });
+
+      res.json(newDomain);
+    } catch (error) {
+      console.error('Error creating domain:', error);
+      res.status(500).json({ error: 'Failed to create domain' });
+    }
+  });
+
+  app.post('/api/domains/:id/verify', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'update'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const orgId = req.currentOrganization;
+      
+      const domain = await storage.getOrgDomain(id);
+      if (!domain || domain.organizationId !== orgId) {
+        return res.status(404).json({ error: 'Domain not found' });
+      }
+
+      const updated = await storage.updateOrgDomain(id, {
+        status: 'VERIFIED',
+        verifiedAt: new Date(),
+        lastCheckedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error('Error verifying domain:', error);
+      res.status(500).json({ error: 'Failed to verify domain' });
+    }
+  });
+
+  app.delete('/api/domains/:id', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'delete'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const orgId = req.currentOrganization;
+      
+      const domain = await storage.getOrgDomain(id);
+      if (!domain || domain.organizationId !== orgId) {
+        return res.status(404).json({ error: 'Domain not found' });
+      }
+
+      await storage.updateOrgDomain(id, { status: 'FAILED' });
+      
+      const audit = createAuditLogger('delete', 'domain');
+      await audit(req, orgId, id, { domain: domain.domain });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting domain:', error);
+      res.status(500).json({ error: 'Failed to delete domain' });
+    }
+  });
+
+  // B9 - GDPR Data Export Routes
+  app.get('/api/gdpr/export/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const data = await storage.exportUserData(userId);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="user-data-${userId}.json"`);
+      res.json(data);
+    } catch (error) {
+      console.error('Error exporting user data:', error);
+      res.status(500).json({ error: 'Failed to export user data' });
+    }
+  });
+
+  app.get('/api/gdpr/export/organization', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'read'), async (req: any, res) => {
+    try {
+      const orgId = req.currentOrganization;
+      const data = await storage.exportOrganizationData(orgId);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="org-data-${orgId}.json"`);
+      res.json(data);
+    } catch (error) {
+      console.error('Error exporting organization data:', error);
+      res.status(500).json({ error: 'Failed to export organization data' });
+    }
+  });
+
+  app.post('/api/gdpr/deletion-request', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req.user);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const existing = await storage.getUserDeletionRequest(userId);
+      if (existing && existing.status !== 'COMPLETED') {
+        return res.status(400).json({ error: 'Deletion request already exists' });
+      }
+
+      const confirmationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      const request = await storage.createUserDeletionRequest({
+        userId,
+        requestorEmail: user.email,
+        status: 'PENDING',
+        confirmationToken,
+        metadata: { requestedAt: new Date().toISOString() },
+      });
+
+      res.json({ 
+        message: 'Deletion request created. Please check your email to confirm.',
+        requestId: request.id,
+      });
+    } catch (error) {
+      console.error('Error creating deletion request:', error);
+      res.status(500).json({ error: 'Failed to create deletion request' });
+    }
+  });
+
+  app.post('/api/gdpr/confirm-deletion/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const request = await storage.getUserDeletionRequestByToken(token);
+      if (!request) {
+        return res.status(404).json({ error: 'Invalid confirmation token' });
+      }
+
+      if (request.status !== 'PENDING') {
+        return res.status(400).json({ error: 'Request already processed' });
+      }
+
+      const scheduledPurgeAt = new Date();
+      scheduledPurgeAt.setDate(scheduledPurgeAt.getDate() + 30);
+
+      await storage.updateUserDeletionRequest(request.id, {
+        status: 'CONFIRMED',
+        confirmedAt: new Date(),
+        scheduledPurgeAt,
+      });
+
+      res.json({ 
+        message: 'Deletion confirmed. Your data will be permanently deleted in 30 days.',
+        scheduledPurgeAt,
+      });
+    } catch (error) {
+      console.error('Error confirming deletion:', error);
+      res.status(500).json({ error: 'Failed to confirm deletion' });
     }
   });
 

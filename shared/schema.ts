@@ -31,6 +31,9 @@ export const budgetCategoryEnum = pgEnum('budget_category', ['SOCIAL_ADS', 'FIER
 export const offlineActivityTypeEnum = pgEnum('offline_activity_type', ['FIERA', 'EVENTO', 'STAMPA', 'PR', 'SPONSORSHIP', 'DIRECT_MAIL', 'RADIO', 'TV', 'OUTDOOR', 'ALTRO']);
 export const notificationTypeEnum = pgEnum('notification_type', ['INFO', 'SUCCESS', 'WARNING', 'ERROR']);
 export const postTypeEnum = pgEnum('post_type', ['PHOTO', 'VIDEO', 'CAROUSEL']);
+export const planTierEnum = pgEnum('plan_tier', ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE']);
+export const domainStatusEnum = pgEnum('domain_status', ['PENDING', 'VERIFIED', 'ACTIVE', 'FAILED']);
+export const deletionStatusEnum = pgEnum('deletion_status', ['PENDING', 'CONFIRMED', 'PROCESSING', 'COMPLETED']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -457,6 +460,67 @@ export const notifications = pgTable("notifications", {
   index("idx_notifications_organization").on(table.organizationId)
 ]);
 
+// Subscription Plans (B7)
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  tier: planTierEnum("tier").notNull(),
+  stripePriceId: varchar("stripe_price_id"),
+  monthlyPriceCents: integer("monthly_price_cents").notNull(),
+  maxUsers: integer("max_users").notNull(),
+  maxAssets: integer("max_assets").notNull(),
+  maxPostsPerMonth: integer("max_posts_per_month").notNull(),
+  features: jsonb("features"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Organization Subscriptions (B7)
+export const organizationSubscriptions = pgTable("organization_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  planId: uuid("plan_id").notNull().references(() => subscriptionPlans.id),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  status: varchar("status").notNull().default('active'),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Custom Domains (B8)
+export const orgDomains = pgTable("org_domains", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  domain: varchar("domain", { length: 255 }).notNull().unique(),
+  status: domainStatusEnum("status").default('PENDING'),
+  cnameTarget: varchar("cname_target", { length: 255 }),
+  verificationToken: varchar("verification_token"),
+  verifiedAt: timestamp("verified_at"),
+  lastCheckedAt: timestamp("last_checked_at"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_org_domains_organization").on(table.organizationId),
+  index("idx_org_domains_status").on(table.status)
+]);
+
+// User Deletion Requests (B9 - GDPR)
+export const userDeletionRequests = pgTable("user_deletion_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  requestorEmail: varchar("requestor_email").notNull(),
+  status: deletionStatusEnum("status").default('PENDING'),
+  confirmationToken: varchar("confirmation_token"),
+  confirmedAt: timestamp("confirmed_at"),
+  scheduledPurgeAt: timestamp("scheduled_purge_at"),
+  completedAt: timestamp("completed_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relationships
 export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(memberships),
@@ -741,6 +805,42 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuthRegister = z.infer<typeof authRegisterSchema>;
 export type AuthLogin = z.infer<typeof authLoginSchema>;
+
+// B7 - Subscription Plan schemas
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertOrganizationSubscriptionSchema = createInsertSchema(organizationSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type OrganizationSubscription = typeof organizationSubscriptions.$inferSelect;
+export type InsertOrganizationSubscription = z.infer<typeof insertOrganizationSubscriptionSchema>;
+
+// B8 - Custom Domain schemas
+export const insertOrgDomainSchema = createInsertSchema(orgDomains).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type OrgDomain = typeof orgDomains.$inferSelect;
+export type InsertOrgDomain = z.infer<typeof insertOrgDomainSchema>;
+
+// B9 - User Deletion Request schemas
+export const insertUserDeletionRequestSchema = createInsertSchema(userDeletionRequests).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type UserDeletionRequest = typeof userDeletionRequests.$inferSelect;
+export type InsertUserDeletionRequest = z.infer<typeof insertUserDeletionRequestSchema>;
 
 // Settings schemas
 export const userSettingsSchema = z.object({

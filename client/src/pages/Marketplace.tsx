@@ -171,13 +171,13 @@ function QuickBuyModal({ service, open, onOpenChange }: {
 
           {/* Contact Information */}
           <div className="space-y-4">
-            <h4 className="font-medium flex items-center gap-2">
+            <h4 className="font-medium flex items-center gap-2 text-white">
               <User className="h-4 w-4" />
               Informazioni di Contatto
             </h4>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="contactName">Nome Contatto *</Label>
+              <div className="space-y-3">
+                <Label htmlFor="contactName" className="text-white">Nome Contatto *</Label>
                 <Input
                   id="contactName"
                   value={contactName}
@@ -189,8 +189,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
                   onKeyUp={(e)=>e.stopPropagation()}
                 />
               </div>
-              <div>
-                <Label htmlFor="contactEmail">Email Contatto *</Label>
+              <div className="space-y-3">
+                <Label htmlFor="contactEmail" className="text-white">Email Contatto *</Label>
                 <Input
                   id="contactEmail"
                   type="email"
@@ -208,11 +208,11 @@ function QuickBuyModal({ service, open, onOpenChange }: {
 
           {/* Order Configuration */}
           <div className="space-y-4">
-            <h4 className="font-medium">Configurazione Ordine</h4>
+            <h4 className="font-medium text-white">Configurazione Ordine</h4>
             
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="quantity">Quantità</Label>
+              <div className="space-y-3">
+                <Label htmlFor="quantity" className="text-white">Quantità</Label>
                 <Input
                   id="quantity"
                   type="number"
@@ -226,8 +226,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
                 />
               </div>
               
-              <div>
-                <Label htmlFor="priority">Priorità</Label>
+              <div className="space-y-3">
+                <Label htmlFor="priority" className="text-white">Priorità</Label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger data-testid="select-priority">
                     <SelectValue />
@@ -243,8 +243,8 @@ function QuickBuyModal({ service, open, onOpenChange }: {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="notes">Note aggiuntive (opzionale)</Label>
+            <div className="space-y-3">
+              <Label htmlFor="notes" className="text-white">Note aggiuntive (opzionale)</Label>
               <Textarea
                 id="notes"
                 value={notes}

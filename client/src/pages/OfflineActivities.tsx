@@ -252,8 +252,8 @@ export default function OfflineActivities() {
               
               <form onSubmit={handleSubmit} className="space-y-6" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
                 {/* Titolo */}
-                <div className="space-y-2">
-                  <Label htmlFor="title" className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <Label htmlFor="title" className="flex items-center space-x-2 text-white">
                     <FileText className="w-4 h-4" />
                     <span>Titolo attività *</span>
                   </Label>
@@ -270,8 +270,8 @@ export default function OfflineActivities() {
                 </div>
 
                 {/* Tipo */}
-                <div className="space-y-2">
-                  <Label htmlFor="type" className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <Label htmlFor="type" className="flex items-center space-x-2 text-white">
                     <MapPin className="w-4 h-4" />
                     <span>Tipo di attività *</span>
                   </Label>
@@ -290,8 +290,8 @@ export default function OfflineActivities() {
                 </div>
 
                 {/* Data */}
-                <div className="space-y-2">
-                  <Label htmlFor="activityDate" className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <Label htmlFor="activityDate" className="flex items-center space-x-2 text-white">
                     <Calendar className="w-4 h-4" />
                     <span>Data attività *</span>
                   </Label>
@@ -308,8 +308,8 @@ export default function OfflineActivities() {
                 </div>
 
                 {/* Budget */}
-                <div className="space-y-2">
-                  <Label htmlFor="budget" className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <Label htmlFor="budget" className="flex items-center space-x-2 text-white">
                     <Euro className="w-4 h-4" />
                     <span>Budget (€)</span>
                   </Label>
@@ -328,8 +328,8 @@ export default function OfflineActivities() {
                 </div>
 
                 {/* Descrizione */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrizione</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="description" className="text-white">Descrizione</Label>
                   <Textarea
                     id="description"
                     placeholder="Descrivi l'attività, obiettivi, modalità di partecipazione..."
@@ -343,12 +343,12 @@ export default function OfflineActivities() {
                 </div>
 
                 {/* File Upload */}
-                <div className="space-y-2">
-                  <Label className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <Label className="flex items-center space-x-2 text-white">
                     <Upload className="w-4 h-4" />
                     <span>Allegati (PDF, immagini, video)</span>
                   </Label>
-                  <div className="text-sm text-gray-600 mb-2">
+                  <div className="text-sm text-white/70 mb-2">
                     Carica documenti, brochure, immagini o video relativi all'attività offline
                   </div>
                   <ObjectUploader

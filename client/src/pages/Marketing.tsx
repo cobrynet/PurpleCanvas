@@ -199,8 +199,8 @@ function PostOrganiciSection() {
               
               <div className="space-y-6 py-4">
                 {/* Titolo */}
-                <div className="space-y-2">
-                  <Label htmlFor="post-title">Titolo</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="post-title" className="text-white">Titolo</Label>
                   <Input
                     id="post-title"
                     placeholder="Inserisci il titolo del post"
@@ -213,8 +213,8 @@ function PostOrganiciSection() {
                 </div>
 
                 {/* Canale */}
-                <div className="space-y-2">
-                  <Label htmlFor="post-channel">Canale</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="post-channel" className="text-white">Canale</Label>
                   <Select value={postForm.channel} onValueChange={(value) => setPostForm(prev => ({ ...prev, channel: value }))}>
                     <SelectTrigger data-testid="post-channel-select">
                       <SelectValue placeholder="Seleziona canale" />
@@ -230,8 +230,8 @@ function PostOrganiciSection() {
                 </div>
 
                 {/* Copy */}
-                <div className="space-y-2">
-                  <Label htmlFor="post-copy">Testo del post</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="post-copy" className="text-white">Testo del post</Label>
                   <Textarea
                     id="post-copy"
                     placeholder="Scrivi il contenuto del tuo post..."
@@ -245,8 +245,8 @@ function PostOrganiciSection() {
                 </div>
 
                 {/* File Upload */}
-                <div className="space-y-2">
-                  <Label htmlFor="post-file">Allegato (immagine/video)</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="post-file" className="text-white">Allegato (immagine/video)</Label>
                   <Input
                     id="post-file"
                     type="file"
@@ -264,8 +264,8 @@ function PostOrganiciSection() {
                 </div>
 
                 {/* Pianificazione */}
-                <div className="space-y-2">
-                  <Label htmlFor="post-scheduled">Pianifica pubblicazione</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="post-scheduled" className="text-white">Pianifica pubblicazione</Label>
                   <Input
                     id="post-scheduled"
                     type="datetime-local"
@@ -278,8 +278,8 @@ function PostOrganiciSection() {
                 </div>
 
                 {/* Priorità */}
-                <div className="space-y-2">
-                  <Label htmlFor="post-priority">Priorità</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="post-priority" className="text-white">Priorità</Label>
                   <Select value={postForm.priority} onValueChange={(value) => setPostForm(prev => ({ ...prev, priority: value }))}>
                     <SelectTrigger data-testid="post-priority-select">
                       <SelectValue />
@@ -769,8 +769,8 @@ function CampagneSection() {
             
             <form onSubmit={handleUpdateCampaign} className="space-y-6 py-4" onKeyDown={(e)=>e.stopPropagation()} onKeyUp={(e)=>e.stopPropagation()}>
               {/* Nome */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Nome Campagna *</Label>
+              <div className="space-y-3">
+                <Label htmlFor="edit-name" className="text-white">Nome Campagna *</Label>
                 <Input
                   id="edit-name"
                   placeholder="Es: Campagna Black Friday 2024"
@@ -784,8 +784,8 @@ function CampagneSection() {
               </div>
 
               {/* Obiettivo */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-objective">Obiettivo</Label>
+              <div className="space-y-3">
+                <Label htmlFor="edit-objective" className="text-white">Obiettivo</Label>
                 <Textarea
                   id="edit-objective"
                   placeholder="Descrivi l'obiettivo della campagna pubblicitaria..."
@@ -800,8 +800,8 @@ function CampagneSection() {
 
 
               {/* Status */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">Stato</Label>
+              <div className="space-y-3">
+                <Label htmlFor="edit-status" className="text-white">Stato</Label>
                 <Select 
                   value={editCampaignForm.status} 
                   onValueChange={(value) => setEditCampaignForm(prev => ({ ...prev, status: value }))}
@@ -819,8 +819,8 @@ function CampagneSection() {
               </div>
 
               {/* Budget */}
-              <div className="space-y-2">
-                <Label htmlFor="edit-budget">Budget (€)</Label>
+              <div className="space-y-3">
+                <Label htmlFor="edit-budget" className="text-white">Budget (€)</Label>
                 <Input
                   id="edit-budget"
                   type="number"
@@ -837,8 +837,8 @@ function CampagneSection() {
 
               {/* Periodo */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-start">Data Inizio</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="edit-start" className="text-white">Data Inizio</Label>
                   <Input
                     id="edit-start"
                     type="date"
@@ -849,8 +849,8 @@ function CampagneSection() {
                     onKeyUp={(e)=>e.stopPropagation()}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-end">Data Fine</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="edit-end" className="text-white">Data Fine</Label>
                   <Input
                     id="edit-end"
                     type="date"

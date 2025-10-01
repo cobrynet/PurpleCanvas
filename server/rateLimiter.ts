@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { sendRateLimitError } from './errors';
 
 interface RateLimitConfig {
   windowMs: number;
@@ -79,21 +80,13 @@ export function createRateLimit(config: RateLimitConfig): RequestHandler {
 
     const ipCheck = rateLimiter.checkIpLimit(ip, config);
     if (!ipCheck.allowed) {
-      res.set('Retry-After', ipCheck.retryAfter!.toString());
-      return res.status(429).json({
-        error: 'Too many requests from this IP address',
-        retryAfter: ipCheck.retryAfter,
-      });
+      return sendRateLimitError(res, ipCheck.retryAfter!);
     }
 
     if (orgId) {
       const orgCheck = rateLimiter.checkOrgLimit(orgId, config);
       if (!orgCheck.allowed) {
-        res.set('Retry-After', orgCheck.retryAfter!.toString());
-        return res.status(429).json({
-          error: 'Too many requests for this organization',
-          retryAfter: orgCheck.retryAfter,
-        });
+        return sendRateLimitError(res, orgCheck.retryAfter!);
       }
     }
 

@@ -10,7 +10,42 @@ The platform features role-based access control with different permission levels
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (September 30, 2025)
+## Recent Changes
+
+### October 1, 2025 - Phase 10: Operational Hardening
+
+**B4 - Unified Error Handling & Retry Logic**
+- **Standardized Error Format**: Created server/errors.ts with consistent API error responses (error.code, error.message, error.details)
+- **Error Codes**: UNAUTHORIZED, FORBIDDEN, RATE_LIMIT_EXCEEDED, VALIDATION_ERROR, NOT_FOUND, UPLOAD_FAILED, etc.
+- **Middleware Integration**: Updated RBAC (server/rbac.ts) and rate limiter (server/rateLimiter.ts) to use standardized error responses
+- **Client-Side Retry**: Implemented executeWithRetry in client/src/lib/errorHandling.ts with exponential backoff for idempotent operations
+- **User-Friendly Errors**: showErrorToast displays errors with retry action buttons using ToastAction component
+- **Retry After Support**: Rate limit errors include retryAfter in response body for optimal retry timing
+
+**B5 - Performance Optimizations**
+- **HTTP Caching**: Created server/cacheMiddleware.ts with Cache-Control headers for authenticated endpoints
+  - dashboardCache: 60s max-age, 120s stale-while-revalidate
+  - listCache: 120s max-age, 180s stale-while-revalidate  
+  - kpiCache: 300s max-age, 600s stale-while-revalidate
+- **Security**: All cache headers use "private" to prevent tenant data leakage through shared caches
+- **Cache Vary**: Added "Vary: Cookie" header for proper cache key differentiation with session-based auth
+- **Cached Endpoints**: Applied to /api/dashboard-stats, /api/recent-activity, /api/upcoming-deadlines, /api/campaigns, /api/marketing/campaigns, /api/leads, /api/opportunities
+- **Lazy Loading**: Created LazyImage component with IntersectionObserver for performance
+
+**B6 - CI/CD Pre-commit Checks**
+- **CI Script**: Created ci-checks.sh executable script for pre-commit validation
+- **Type Checking**: Runs TypeScript compiler checks (npm run check)
+- **Lint Check**: Additional TypeScript compilation validation (tsc --noEmit)
+- **Test Placeholder**: Ready for future test suite integration
+- **Manual Execution**: Run ./ci-checks.sh before commits
+
+**Security Enhancements (Phase 10)**
+- RBAC enforcement on all API routes with module-based permissions
+- Audit logging with IP address and User-Agent tracking for all sensitive operations
+- Rate limiting on auth, upload, publish, and checkout endpoints
+- Private caching to prevent cross-tenant data exposure
+
+### September 30, 2025
 
 ### Theme & Layout Modernization
 **Feature**: Complete modernization of dark theme and layout components for improved readability and modern aesthetics.

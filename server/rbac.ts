@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { sendForbidden } from './errors';
 
 export type Role = 'SUPER_ADMIN' | 'ORG_ADMIN' | 'MARKETER' | 'SALES' | 'VIEWER';
 export type Module = 'marketing' | 'marketing_adv' | 'marketing_offline' | 'crm' | 'goals' | 'marketplace' | 'settings' | 'chat';
@@ -65,7 +66,7 @@ export function hasPermission(role: Role, module: Module, action: Action): boole
 export function requirePermission(module: Module, action: Action = 'read'): RequestHandler {
   return (req: any, res, next) => {
     if (!req.currentMembership) {
-      return res.status(403).json({ message: "No membership found" });
+      return sendForbidden(res, "No organization membership found");
     }
 
     const userRole = req.currentMembership.role as Role;
@@ -74,17 +75,14 @@ export function requirePermission(module: Module, action: Action = 'read'): Requ
       return next();
     }
 
-    return res.status(403).json({ 
-      message: "Access denied",
-      error: `Role ${userRole} does not have ${action} permission for ${module} module`
-    });
+    return sendForbidden(res, `Your role (${userRole}) does not have permission to ${action} ${module} resources`);
   };
 }
 
 export function requireAnyPermission(checks: { module: Module; action: Action }[]): RequestHandler {
   return (req: any, res, next) => {
     if (!req.currentMembership) {
-      return res.status(403).json({ message: "No membership found" });
+      return sendForbidden(res, "No organization membership found");
     }
 
     const userRole = req.currentMembership.role as Role;
@@ -97,9 +95,6 @@ export function requireAnyPermission(checks: { module: Module; action: Action }[
       return next();
     }
 
-    return res.status(403).json({ 
-      message: "Access denied",
-      error: `Role ${userRole} does not have required permissions`
-    });
+    return sendForbidden(res, `Your role (${userRole}) does not have the required permissions for this action`);
   };
 }

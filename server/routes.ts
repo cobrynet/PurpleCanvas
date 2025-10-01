@@ -6,6 +6,7 @@ import { setupAuth, isAuthenticated, withCurrentOrganization } from "./replitAut
 import { requirePermission } from "./rbac";
 import { captureAuditContext, createAuditLogger } from "./auditMiddleware";
 import { authRateLimit, uploadRateLimit, publishRateLimit, checkoutRateLimit } from "./rateLimiter";
+import { dashboardCache, listCache, kpiCache } from "./cacheMiddleware";
 import { db } from "./db";
 import { organizations } from "@shared/schema";
 import { count } from "drizzle-orm";
@@ -1507,7 +1508,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Dashboard stats
-  app.get('/api/dashboard-stats', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/dashboard-stats', isAuthenticated, withCurrentOrganization, dashboardCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1520,7 +1521,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Recent activity
-  app.get('/api/recent-activity', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/recent-activity', isAuthenticated, withCurrentOrganization, dashboardCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1533,7 +1534,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Upcoming deadlines
-  app.get('/api/upcoming-deadlines', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/upcoming-deadlines', isAuthenticated, withCurrentOrganization, dashboardCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1572,7 +1573,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'read'), async (req: any, res) => {
+  app.get('/api/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'read'), listCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1585,7 +1586,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Marketing ADV Campaigns - using current organization
-  app.get('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'read'), async (req: any, res) => {
+  app.get('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'read'), listCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
@@ -1723,7 +1724,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/leads', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'read'), async (req: any, res) => {
+  app.get('/api/leads', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'read'), listCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1780,7 +1781,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/opportunities', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'read'), async (req: any, res) => {
+  app.get('/api/opportunities', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'read'), listCache, async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       

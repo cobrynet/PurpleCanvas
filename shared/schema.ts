@@ -16,7 +16,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const roleEnum = pgEnum('role', ['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER', 'SALES', 'VIEWER']);
+export const roleEnum = pgEnum('role', ['SUPER_ADMIN', 'ORG_ADMIN', 'MARKETER', 'SALES', 'VIEWER', 'VENDOR']);
 export const priorityEnum = pgEnum('priority', ['P0', 'P1', 'P2', 'P3']);
 export const campaignStatusEnum = pgEnum('campaign_status', ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED']);
 export const campaignTypeEnum = pgEnum('campaign_type', ['ORGANICO', 'ADV', 'MIXED']);
@@ -34,6 +34,8 @@ export const postTypeEnum = pgEnum('post_type', ['PHOTO', 'VIDEO', 'CAROUSEL']);
 export const planTierEnum = pgEnum('plan_tier', ['FREE', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE']);
 export const domainStatusEnum = pgEnum('domain_status', ['PENDING', 'VERIFIED', 'ACTIVE', 'FAILED']);
 export const deletionStatusEnum = pgEnum('deletion_status', ['PENDING', 'CONFIRMED', 'PROCESSING', 'COMPLETED']);
+export const approvalStatusEnum = pgEnum('approval_status', ['DRAFT', 'IN_REVIEW', 'APPROVED', 'CHANGES_REQUESTED']);
+export const orderDeliverableStatusEnum = pgEnum('order_deliverable_status', ['PENDING', 'READY_FOR_REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'DELIVERED']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -131,6 +133,10 @@ export const marketingTasks = pgTable("marketing_tasks", {
   priority: priorityEnum("priority").default('P2'),
   dueAt: timestamp("due_at"),
   metadata: jsonb("metadata"), // Extra fields like channel, week number, etc.
+  approvalStatus: approvalStatusEnum("approval_status").default('DRAFT'),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -238,6 +244,10 @@ export const assets = pgTable("assets", {
   rights: jsonb("rights"),
   ownerId: varchar("owner_id").references(() => users.id),
   version: integer("version").default(1),
+  approvalStatus: approvalStatusEnum("approval_status").default('DRAFT'),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_assets_organization").on(table.organizationId)
@@ -408,6 +418,11 @@ export const orgServiceOrders = pgTable("org_service_orders", {
   assigneeVendorUserId: varchar("assignee_vendor_user_id").references(() => users.id),
   total: real("total"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  slaDurationDays: integer("sla_duration_days"), // SLA duration (e.g., 3 days)
+  slaDeadline: timestamp("sla_deadline"), // Calculated deadline based on SLA
+  deliverableStatus: orderDeliverableStatusEnum("deliverable_status").default('PENDING'),
+  deliveredAt: timestamp("delivered_at"),
+  reviewNotes: text("review_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -760,6 +775,18 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   createdAt: true,
 });
 
+export const insertAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+  createdAt: true,
+  approvedAt: true,
+});
+
+export const insertOrgServiceOrderSchema = createInsertSchema(orgServiceOrders).omit({
+  id: true,
+  createdAt: true,
+  deliveredAt: true,
+});
+
 // Authentication schemas
 export const authRegisterSchema = z.object({
   email: z.string().email("Formato email non valido"),
@@ -796,8 +823,10 @@ export type UpdateMarketingTask = z.infer<typeof updateMarketingTaskSchema>;
 export type SocialPost = typeof socialPosts.$inferSelect;
 export type InsertSocialPost = z.infer<typeof insertSocialPostSchema>;
 export type Asset = typeof assets.$inferSelect;
+export type InsertAsset = z.infer<typeof insertAssetSchema>;
 export type Service = typeof services.$inferSelect;
 export type OrgServiceOrder = typeof orgServiceOrders.$inferSelect;
+export type InsertOrgServiceOrder = z.infer<typeof insertOrgServiceOrderSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type ConversationMessage = typeof conversationMessages.$inferSelect;

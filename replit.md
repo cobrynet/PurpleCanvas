@@ -16,6 +16,17 @@ Stratikey is a comprehensive B2B multi-tenant platform designed for autonomous m
 - **Frontend**: ApprovalActions component for managing approvals, TaskApprovalBadge for status display, integration into marketing workflow
 - **Security**: Server-side approval gate checks before publishing social posts with linked assets
 
+### B14 - Accessibility & Responsive Design
+- **Accessibility**: Global :focus-visible focus rings for keyboard navigation, comprehensive ARIA labels using i18n translation keys, skip-to-main-content link for screen readers
+- **Responsive Design**: Mobile-first responsive sidebar with overlay and toggle button, works from 360px viewport width, fluid layouts across all breakpoints
+- **WCAG Compliance**: AA-level contrast compliance verified for purple theme, proper semantic HTML structure
+
+### B15 - Internationalization (IT/EN)
+- **i18n System**: Lightweight React Context-based localization with Italian (default) and English support, IT fallback for missing translations
+- **Coverage**: All structural UI strings internationalized including navigation, header controls, ARIA labels, settings page
+- **Language Switching**: Integrated language switcher in Settings page with localStorage persistence and HTML lang attribute sync
+- **Translation Structure**: Organized keys (nav.*, header.*, a11y.*, settings.*, common.*) in translations.ts
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -23,10 +34,10 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The platform features a modernized dark theme and layout components for improved readability and aesthetics. It uses custom CSS variables for both light and dark themes, with `AppLayout.tsx` and other layout components migrated to theme tokens. Typography is enhanced for readability, and modern utilities like shadow effects, transitions, and hover states are implemented. WCAG AA contrast compliance is ensured for all text elements.
+The platform features a modernized dark theme and layout components for improved readability and aesthetics. It uses custom CSS variables for both light and dark themes, with `AppLayout.tsx` and other layout components migrated to theme tokens. Typography is enhanced for readability, and modern utilities like shadow effects, transitions, and hover states are implemented. WCAG AA contrast compliance is ensured for all text elements. The platform is fully responsive from 360px viewport width with mobile-optimized navigation and comprehensive keyboard accessibility support.
 
 ### Technical Implementations
-- **Frontend**: React with TypeScript, Vite, Wouter for routing, Radix UI components with shadcn/ui design system, Tailwind CSS for styling, TanStack Query for server state, and React Hook Form for forms.
+- **Frontend**: React with TypeScript, Vite, Wouter for routing, Radix UI components with shadcn/ui design system, Tailwind CSS for styling, TanStack Query for server state, React Hook Form for forms, and React Context for i18n (IT/EN).
 - **Backend**: Node.js with Express.js, TypeScript, RESTful API design, and session-based authentication.
 - **Authentication & Authorization**: Dual system supporting email/password (Passport.js with bcrypt) and Replit OAuth (OpenID Connect). Session management uses Express sessions with PostgreSQL storage. Role-based access control (RBAC) with middleware protection and Zod server-side validation are implemented.
 - **Data Storage**: PostgreSQL with Neon serverless driver, Drizzle ORM for schema management and migrations, and Drizzle Kit. Zod schemas ensure runtime type checking and validation.

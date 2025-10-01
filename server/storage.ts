@@ -68,6 +68,7 @@ import {
   organizationSubscriptions,
   orgDomains,
   userDeletionRequests,
+  strategyDrafts,
   type SubscriptionPlan,
   type InsertSubscriptionPlan,
   type OrganizationSubscription,
@@ -76,6 +77,8 @@ import {
   type InsertOrgDomain,
   type UserDeletionRequest,
   type InsertUserDeletionRequest,
+  type StrategyDraft,
+  type InsertStrategyDraft,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull, sql } from "drizzle-orm";
@@ -250,6 +253,13 @@ export interface IStorage {
   updateUserDeletionRequest(id: string, updates: Partial<UserDeletionRequest>): Promise<UserDeletionRequest | undefined>;
   exportUserData(userId: string): Promise<any>;
   exportOrganizationData(orgId: string): Promise<any>;
+  
+  // B10 - AI Strategy operations
+  createStrategyDraft(draft: InsertStrategyDraft): Promise<StrategyDraft>;
+  getStrategyDrafts(orgId: string): Promise<StrategyDraft[]>;
+  getStrategyDraft(id: string): Promise<StrategyDraft | undefined>;
+  getStrategyDraftsByGoal(goalId: string): Promise<StrategyDraft[]>;
+  updateStrategyDraft(id: string, updates: Partial<StrategyDraft>): Promise<StrategyDraft | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1492,6 +1502,42 @@ export class DatabaseStorage implements IStorage {
       goals: goals.length,
       exportedAt: new Date().toISOString(),
     };
+  }
+
+  // B10 - AI Strategy operations
+  async createStrategyDraft(draft: InsertStrategyDraft): Promise<StrategyDraft> {
+    const [created] = await db.insert(strategyDrafts).values(draft).returning();
+    return created;
+  }
+
+  async getStrategyDrafts(orgId: string): Promise<StrategyDraft[]> {
+    return await db
+      .select()
+      .from(strategyDrafts)
+      .where(eq(strategyDrafts.organizationId, orgId))
+      .orderBy(desc(strategyDrafts.createdAt));
+  }
+
+  async getStrategyDraft(id: string): Promise<StrategyDraft | undefined> {
+    const [draft] = await db.select().from(strategyDrafts).where(eq(strategyDrafts.id, id));
+    return draft;
+  }
+
+  async getStrategyDraftsByGoal(goalId: string): Promise<StrategyDraft[]> {
+    return await db
+      .select()
+      .from(strategyDrafts)
+      .where(eq(strategyDrafts.goalId, goalId))
+      .orderBy(desc(strategyDrafts.createdAt));
+  }
+
+  async updateStrategyDraft(id: string, updates: Partial<StrategyDraft>): Promise<StrategyDraft | undefined> {
+    const [updated] = await db
+      .update(strategyDrafts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(strategyDrafts.id, id))
+      .returning();
+    return updated;
   }
 }
 

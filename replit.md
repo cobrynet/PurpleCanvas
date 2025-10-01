@@ -2,178 +2,58 @@
 
 ## Overview
 
-Stratikey is a comprehensive B2B multi-tenant platform designed for autonomous marketing and sales management with an integrated services marketplace. The application provides organizations with tools to manage campaigns, leads, opportunities, tasks, and access external services through a unified interface.
-
-The platform features role-based access control with different permission levels (SUPER_ADMIN, ORG_ADMIN, MARKETER, SALES, VIEWER) and supports multiple organizations per user. The system is built with a modern tech stack focusing on performance, scalability, and user experience.
+Stratikey is a comprehensive B2B multi-tenant platform designed for autonomous marketing and sales management with an integrated services marketplace. The platform enables organizations to manage campaigns, leads, opportunities, and tasks, and to access external services through a unified interface. It supports role-based access control (SUPER_ADMIN, ORG_ADMIN, MARKETER, SALES, VIEWER) and multiple organizations per user, built with a focus on performance, scalability, and user experience. The project aims to provide a robust solution for B2B marketing and sales, enhancing efficiency and strategic planning.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes
-
-### October 1, 2025 - Phase 10: Operational Hardening
-
-**B4 - Unified Error Handling & Retry Logic**
-- **Standardized Error Format**: Created server/errors.ts with consistent API error responses (error.code, error.message, error.details)
-- **Error Codes**: UNAUTHORIZED, FORBIDDEN, RATE_LIMIT_EXCEEDED, VALIDATION_ERROR, NOT_FOUND, UPLOAD_FAILED, etc.
-- **Middleware Integration**: Updated RBAC (server/rbac.ts) and rate limiter (server/rateLimiter.ts) to use standardized error responses
-- **Client-Side Retry**: Implemented executeWithRetry in client/src/lib/errorHandling.ts with exponential backoff for idempotent operations
-- **User-Friendly Errors**: showErrorToast displays errors with retry action buttons using ToastAction component
-- **Retry After Support**: Rate limit errors include retryAfter in response body for optimal retry timing
-
-**B5 - Performance Optimizations**
-- **HTTP Caching**: Created server/cacheMiddleware.ts with Cache-Control headers for authenticated endpoints
-  - dashboardCache: 60s max-age, 120s stale-while-revalidate
-  - listCache: 120s max-age, 180s stale-while-revalidate  
-  - kpiCache: 300s max-age, 600s stale-while-revalidate
-- **Security**: All cache headers use "private" to prevent tenant data leakage through shared caches
-- **Cache Vary**: Added "Vary: Cookie" header for proper cache key differentiation with session-based auth
-- **Cached Endpoints**: Applied to /api/dashboard-stats, /api/recent-activity, /api/upcoming-deadlines, /api/campaigns, /api/marketing/campaigns, /api/leads, /api/opportunities
-- **Lazy Loading**: Created LazyImage component with IntersectionObserver for performance
-
-**B6 - CI/CD Pre-commit Checks**
-- **CI Script**: Created ci-checks.sh executable script for pre-commit validation
-- **Type Checking**: Runs TypeScript compiler checks (npm run check)
-- **Lint Check**: Additional TypeScript compilation validation (tsc --noEmit)
-- **Test Placeholder**: Ready for future test suite integration
-- **Manual Execution**: Run ./ci-checks.sh before commits
-
-**Security Enhancements (Phase 10)**
-- RBAC enforcement on all API routes with module-based permissions
-- Audit logging with IP address and User-Agent tracking for all sensitive operations
-- Rate limiting on auth, upload, publish, and checkout endpoints
-- Private caching to prevent cross-tenant data exposure
-
-### September 30, 2025
-
-### Theme & Layout Modernization
-**Feature**: Complete modernization of dark theme and layout components for improved readability and modern aesthetics.
-
-**Implementation**:
-- **CSS Theme Variables**: Updated both light and dark theme color palettes
-  - Dark: Background hsl(280, 40%, 12%), Foreground hsl(0, 0%, 98%), Primary hsl(321, 70%, 55%)
-  - Light: Background hsl(0, 0%, 98%), Foreground hsl(280, 40%, 12%)
-  - Sidebar: hsl(280, 50%, 15%) dark, hsl(280, 30%, 96%) light
-- **Layout Components**: Removed all hardcoded colors from layout files
-  - AppLayout.tsx: Migrated from hardcoded gradient `from-[#390035] to-[#901d6b]` to theme tokens
-  - Sidebar now uses `bg-sidebar`, `text-sidebar-foreground`, `border-sidebar-border`
-  - Header uses `bg-card/95` with backdrop blur
-  - Navigation buttons use `sidebar-accent` tokens with modern transitions
-- **Typography**: Enhanced base styles for h1-h6, paragraphs, labels with proper sizing and spacing
-- **Modern Utilities**: Added shadow effects, transitions, and hover states
-
-**Technical Details**:
-- client/src/index.css: All CSS variables updated for :root (light) and .dark themes
-- client/src/app/layout.tsx: Complete migration to theme token system
-- client/src/components/layout/MainLayout.tsx: Added max-w-7xl container and improved padding
-- WCAG AA contrast compliance ensured for all text elements
-
-### New Feature: AI-Powered Strategy PDF Generation
-**Feature**: Automatic generation of strategic planning documents from business goals using OpenAI and PDF export capabilities.
-
-**Implementation**:
-- **AI Strategy Generation**: POST /api/goals/:goalId/ai-plan endpoint uses OpenAI to analyze business goals and generate comprehensive strategic plans including marketing, offline, and sales strategies
-- **PDF Document Creation**: POST /api/goals/:goalId/strategy-pdf endpoint generates professionally formatted PDF documents using PDFKit library with goal details and AI-generated strategy
-- **Secure Download**: GET /api/goals/:goalId/strategy.pdf endpoint provides authenticated PDF download using ObjectStorageService with proper path normalization
-- **Frontend Integration**: Goals.tsx now displays conditional "Genera Piano AI" or "Scarica Piano" buttons based on strategy generation status
-
-**Technical Details**:
-- PDFKit library added for server-side PDF generation
-- Object storage integration for secure file storage with organization-scoped paths
-- Database schema updated: business_goals table now includes `aiPlan` (text), `strategyPdfUrl` (text), and `strategyGeneratedAt` (timestamp)
-- Storage interface enhanced with `updateBusinessGoal` method for partial goal updates
-
-### New Feature: Enhanced Task Management with Descriptions and Social Fields
-**Feature**: All marketing tasks now include mandatory descriptions and social media-specific fields for better content planning.
-
-**Implementation**:
-- **Task Descriptions**: All tasks now require a `description` field (text, required) that provides detailed context
-- **Social Media Fields**: Tasks include optional `caption` (text) for social post content and `postType` (enum: foto/video/carosello) for post format
-- **Task Detail Dialog**: New comprehensive dialog in Tasks.tsx for viewing and editing all task fields including social-specific ones
-- **Automatic Generation**: All task generation endpoints updated to automatically include contextual descriptions based on task type and goal context
-
-**Technical Details**:
-- Database schema updated: marketing_tasks table includes `description` (text, required), `caption` (text), `postType` (enum)
-- New endpoints: GET /api/tasks/:id (fetch single task), PATCH /api/tasks/:id (update task with validation)
-- Frontend enhancements: Task detail dialog with view/edit modes, form validation using updateMarketingTaskSchema
-- All existing tasks (1055+) updated with contextual descriptions
-
-**Bug Fixes**:
-- Fixed PDF download object storage path resolution using ObjectStorageService.normalizeObjectEntityPath()
-- Added missing type definitions for updateBusinessGoal in IStorage interface
-- Resolved import issues for Loader2 icon component
-
-### Previous Bug Fix: Goal Creation and Task Generation Flow
-**Issue**: Tasks were not being generated after goal creation despite successful API responses.
-
-**Resolution**: Updated Goals.tsx to properly parse JSON responses from apiRequest() utility. Tasks now correctly generate and persist with proper module, goalId, and organizationId fields.
-
 ## System Architecture
 
-### Frontend Architecture
-- **Framework**: React with TypeScript using Vite as the build tool
-- **Routing**: Wouter for client-side routing with role-based page access
-- **UI Library**: Radix UI components with shadcn/ui design system
-- **Styling**: Tailwind CSS with custom CSS variables for theming
-- **State Management**: TanStack Query for server state and form management with React Hook Form
-- **Design Patterns**: Component composition with reusable UI components, custom hooks for data fetching and authentication
+### UI/UX Decisions
+The platform features a modernized dark theme and layout components for improved readability and aesthetics. It uses custom CSS variables for both light and dark themes, with `AppLayout.tsx` and other layout components migrated to theme tokens. Typography is enhanced for readability, and modern utilities like shadow effects, transitions, and hover states are implemented. WCAG AA contrast compliance is ensured for all text elements.
 
-### Backend Architecture
-- **Runtime**: Node.js with Express.js framework
-- **Language**: TypeScript with ES modules
-- **API Design**: RESTful API with session-based authentication
-- **Database ORM**: Drizzle ORM with PostgreSQL dialect
-- **Session Management**: Express sessions with PostgreSQL storage
-- **File Structure**: Monorepo with shared schema between client and server
+### Technical Implementations
+- **Frontend**: React with TypeScript, Vite, Wouter for routing, Radix UI components with shadcn/ui design system, Tailwind CSS for styling, TanStack Query for server state, and React Hook Form for forms.
+- **Backend**: Node.js with Express.js, TypeScript, RESTful API design, and session-based authentication.
+- **Authentication & Authorization**: Dual system supporting email/password (Passport.js with bcrypt) and Replit OAuth (OpenID Connect). Session management uses Express sessions with PostgreSQL storage. Role-based access control (RBAC) with middleware protection and Zod server-side validation are implemented.
+- **Data Storage**: PostgreSQL with Neon serverless driver, Drizzle ORM for schema management and migrations, and Drizzle Kit. Zod schemas ensure runtime type checking and validation.
+- **Multi-tenancy**: Data isolation based on organizations with hierarchical permissions and organization-level access control.
+- **Error Handling**: Standardized error format with consistent API error responses, integrated with RBAC and rate limiters. Client-side retry logic with exponential backoff and user-friendly error toasts.
+- **Performance Optimizations**: HTTP caching with `Cache-Control` headers for authenticated endpoints and `Vary: Cookie` for session-based authentication. Lazy loading for images using `IntersectionObserver`.
+- **AI-Powered Features**: AI-powered strategy generation for business goals using OpenAI, and PDF document creation using PDFKit for strategic plans.
+- **GDPR Compliance**: Features for user data export and deletion requests with a confirmation flow and 30-day grace period.
+- **Subscription Management**: Integration with Stripe for billing, including subscription plans with limits (users, assets, posts) enforced at various points in the application.
+- **Custom Domain Management**: Allows organizations to manage custom domains with CNAME verification.
+- **CI/CD**: Pre-commit checks using a `ci-checks.sh` script for TypeScript type checking and linting.
 
-### Authentication & Authorization
-- **Dual Authentication System**: Supports both email/password and Replit OAuth authentication methods
-- **Email/Password Auth**: Passport.js LocalStrategy with bcrypt password hashing (12 rounds)
-- **OAuth Integration**: Replit OAuth with OpenID Connect for seamless platform integration
-- **Session Storage**: PostgreSQL-backed sessions using connect-pg-simple with secure cookie settings
-- **Security Features**: Zod server-side validation, user enumeration prevention, session regeneration
-- **Authorization Pattern**: Role-based access control with middleware protection
-- **User Management**: Multi-tenant user system with automatic organization creation and membership assignment
-- **Onboarding Flow**: Automatic organization creation with ORG_ADMIN role assignment for new users
-
-### Data Storage Solutions
-- **Primary Database**: PostgreSQL with Neon serverless driver
-- **Schema Management**: Drizzle Kit for migrations and schema definitions
-- **Connection Pooling**: Neon serverless connection pooling
-- **Data Validation**: Zod schemas for runtime type checking and form validation
-
-### Business Logic Organization
-- **Multi-tenancy**: Organization-based data isolation with membership roles
-- **Core Entities**: Users, Organizations, Campaigns, Leads, Opportunities, Marketing Tasks, Assets, Services
-- **Permission Model**: Hierarchical permissions with organization-level access control
-- **Data Relationships**: Normalized schema with foreign key constraints and proper indexing
-- **Goal-Driven Task Management**: Automatic task generation from business goals with GoalPlan specifications
-  - Tasks linked to goals via goalId and module fields (marketing, marketing_adv, marketing_offline, crm)
-  - Task filtering in UI based on goal and module context
-  - Integration between Goals, Marketing, CRM, and Task Manager pages
+### Feature Specifications
+- **Core Entities**: Users, Organizations, Campaigns, Leads, Opportunities, Marketing Tasks, Assets, Services.
+- **Goal-Driven Task Management**: Automatic task generation from business goals with tasks linked to goals and modules (marketing, crm).
+- **Enhanced Task Management**: Marketing tasks include mandatory descriptions and social media-specific fields (caption, postType).
 
 ## External Dependencies
 
 ### Third-Party Services
-- **Replit Auth**: OAuth authentication provider with OpenID Connect
-- **Neon Database**: Serverless PostgreSQL hosting with connection pooling
-- **Stripe**: Payment processing integration for marketplace transactions
+- **Replit Auth**: OAuth authentication provider with OpenID Connect.
+- **Neon Database**: Serverless PostgreSQL hosting.
+- **Stripe**: Payment processing for marketplace transactions and subscription management.
+- **OpenAI**: AI-powered strategy generation.
 
 ### Frontend Libraries
-- **UI Components**: Radix UI primitives for accessible component foundation
-- **Styling**: Tailwind CSS for utility-first styling approach
-- **Charts**: Recharts for data visualization and analytics dashboards
-- **Form Handling**: React Hook Form with Hookform Resolvers for validation
+- **UI Components**: Radix UI, shadcn/ui.
+- **Styling**: Tailwind CSS.
+- **Charts**: Recharts.
+- **Form Handling**: React Hook Form, Hookform Resolvers.
 
 ### Backend Dependencies
-- **Database**: Drizzle ORM with PostgreSQL driver and Neon serverless client
-- **Authentication**: Passport.js with OpenID Client strategy for OAuth
-- **Session Management**: Express Session with PostgreSQL store
-- **Validation**: Zod for schema validation and type safety
+- **Database**: Drizzle ORM, PostgreSQL driver, Neon serverless client.
+- **Authentication**: Passport.js, OpenID Client.
+- **Session Management**: Express Session, connect-pg-simple.
+- **Validation**: Zod.
+- **PDF Generation**: PDFKit.
 
 ### Development Tools
-- **Build System**: Vite for frontend bundling and ESBuild for backend compilation
-- **Type Checking**: TypeScript with strict configuration
-- **Development**: TSX for server development with hot reloading
-- **Replit Integration**: Specialized plugins for Replit development environment
+- **Build System**: Vite, ESBuild.
+- **Type Checking**: TypeScript.
+- **Development**: TSX.

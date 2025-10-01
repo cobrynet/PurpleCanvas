@@ -5,9 +5,9 @@
 :root {
   --background: hsl(304, 100%, 10%);
   --foreground: hsl(0, 0%, 100%);
-  --card: hsl(304, 80%, 15%);
+  --card: hsl(304, 70%, 25%);
   --card-foreground: hsl(0, 0%, 100%);
-  --popover: hsl(304, 80%, 15%);
+  --popover: hsl(304, 70%, 25%);
   --popover-foreground: hsl(0, 0%, 100%);
   --primary: hsl(321, 62%, 34%);
   --primary-foreground: hsl(0, 0%, 100%);
@@ -54,9 +54,9 @@
 .dark {
   --background: hsl(304, 100%, 8%);
   --foreground: hsl(0, 0%, 100%);
-  --card: hsl(304, 80%, 12%);
+  --card: hsl(304, 70%, 20%);
   --card-foreground: hsl(0, 0%, 100%);
-  --popover: hsl(304, 80%, 12%);
+  --popover: hsl(304, 70%, 20%);
   --popover-foreground: hsl(0, 0%, 100%);
   --primary: hsl(321, 62%, 40%);
   --primary-foreground: hsl(0, 0%, 100%);
@@ -72,10 +72,10 @@
   --input: hsl(304, 60%, 22%);
   --ring: hsl(321, 62%, 40%);
   --chart-1: hsl(321, 62%, 40%);
-  --chart-2: hsl(159, 100, 36);
-  --chart-3: hsl(42, 92, 56);
-  --chart-4: hsl(147, 78, 41);
-  --chart-5: hsl(341, 75, 50);
+  --chart-2: hsl(159, 100%, 36%);
+  --chart-3: hsl(42, 92%, 56%);
+  --chart-4: hsl(147, 78%, 41%);
+  --chart-5: hsl(341, 75%, 50%);
   --sidebar: hsl(304, 80%, 12%);
   --sidebar-foreground: hsl(0, 0%, 100%);
   --sidebar-primary: hsl(321, 62%, 40%);

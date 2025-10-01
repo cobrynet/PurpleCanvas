@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { 
   Target,
@@ -14,7 +14,9 @@ import {
   HelpCircle,
   Share2,
   LogOut,
-  Package
+  Package,
+  Menu,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +53,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
   const { selectedOrganization } = useOrganization();
   const userRole = selectedOrganization?.membership?.role;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Filter sidebar items based on user role
   const sidebarItems = allSidebarItems.filter(item => {
@@ -73,18 +76,47 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
-      {/* Sidebar Sinistra */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-[#390035] to-[#901d6b] text-white border-r border-border">
+      {/* Skip to main content for accessibility */}
+      <a href="#main-content" className="skip-to-main">
+        Skip to main content
+      </a>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside 
+        className={`fixed left-0 top-0 z-50 h-screen w-64 bg-gradient-to-b from-[#390035] to-[#901d6b] text-white border-r border-border transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        aria-label="Main navigation"
+      >
         <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center border-b border-white/20 px-6">
+          {/* Logo and close button */}
+          <div className="flex h-16 items-center justify-between border-b border-white/20 px-6">
             <h1 className="text-xl font-bold text-white">
               Stratikey
             </h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden text-white hover:bg-white/10"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close navigation menu"
+              data-testid="close-sidebar"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4">
+          <nav className="flex-1 space-y-1 p-4" aria-label="Primary navigation">
             {sidebarItems.map((item) => {
               const Icon = item.icon;
               const isActive = isActiveRoute(item.href, item.id);
@@ -99,10 +131,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                   data-testid={`sidebar-${item.id}`}
+                  aria-label={item.label}
+                  aria-current={isActive ? "page" : undefined}
                   asChild
                 >
-                  <Link href={item.href}>
-                    <Icon className="mr-3 h-4 w-4" />
+                  <Link href={item.href} onClick={() => setSidebarOpen(false)}>
+                    <Icon className="mr-3 h-4 w-4" aria-hidden="true" />
                     {item.label}
                   </Link>
                 </Button>
@@ -113,10 +147,21 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="pl-64">
+      <div className="lg:pl-64">
         {/* Topbar */}
         <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-black/95 dark:supports-[backdrop-filter]:bg-black/60">
-          <div className="flex h-16 items-center justify-end px-6">
+          <div className="flex h-16 items-center justify-between lg:justify-end px-4 lg:px-6">
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open navigation menu"
+              data-testid="open-sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
             <div className="flex items-center space-x-4">
               {/* Organization Selector */}
               <OrganizationSelector />
@@ -249,7 +294,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1">
+        <main id="main-content" className="flex-1" role="main">
           {children}
         </main>
       </div>

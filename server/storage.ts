@@ -158,7 +158,14 @@ export interface IStorage {
   // Order operations
   createOrder(order: Omit<OrgServiceOrder, 'id' | 'createdAt'>): Promise<OrgServiceOrder>;
   getOrders(orgId: string): Promise<OrgServiceOrder[]>;
+  getVendorOrders(vendorUserId: string): Promise<OrgServiceOrder[]>;
+  getOrder(orderId: string): Promise<OrgServiceOrder | undefined>;
   updateOrderPaymentStatus(orderId: string, stripePaymentIntentId: string, status: 'CONFIRMED' | 'REQUESTED' | 'IN_PROGRESS' | 'DELIVERED' | 'CLOSED'): Promise<OrgServiceOrder | undefined>;
+  updateOrderDeliverableStatus(orderId: string, deliverableStatus: 'PENDING' | 'READY_FOR_REVIEW' | 'CHANGES_REQUESTED' | 'APPROVED' | 'DELIVERED', reviewNotes?: string): Promise<OrgServiceOrder | undefined>;
+  
+  // Approval operations (B13)
+  updateAssetApprovalStatus(assetId: string, orgId: string, approvalStatus: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED', approvedById?: string, reviewNotes?: string): Promise<Asset | undefined>;
+  updateTaskApprovalStatus(taskId: string, orgId: string, approvalStatus: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED', approvedById?: string, reviewNotes?: string): Promise<MarketingTask | undefined>;
 
   // Social Connection operations
   createSocialConnection(connection: InsertSocialConnection): Promise<SocialConnection>;
@@ -687,6 +694,95 @@ export class DatabaseStorage implements IStorage {
         stripePaymentIntentId 
       })
       .where(eq(orgServiceOrders.id, orderId))
+      .returning();
+    return updated;
+  }
+
+  async getVendorOrders(vendorUserId: string): Promise<OrgServiceOrder[]> {
+    return await db
+      .select()
+      .from(orgServiceOrders)
+      .where(eq(orgServiceOrders.assigneeVendorUserId, vendorUserId))
+      .orderBy(desc(orgServiceOrders.createdAt));
+  }
+
+  async getOrder(orderId: string): Promise<OrgServiceOrder | undefined> {
+    const [order] = await db.select().from(orgServiceOrders).where(eq(orgServiceOrders.id, orderId));
+    return order;
+  }
+
+  async updateOrderDeliverableStatus(
+    orderId: string, 
+    deliverableStatus: 'PENDING' | 'READY_FOR_REVIEW' | 'CHANGES_REQUESTED' | 'APPROVED' | 'DELIVERED', 
+    reviewNotes?: string
+  ): Promise<OrgServiceOrder | undefined> {
+    const updateData: Partial<OrgServiceOrder> = { 
+      deliverableStatus,
+      reviewNotes: reviewNotes || null
+    };
+    
+    // Mark as delivered when status is DELIVERED
+    if (deliverableStatus === 'DELIVERED') {
+      updateData.deliveredAt = new Date();
+    }
+    
+    const [updated] = await db
+      .update(orgServiceOrders)
+      .set(updateData)
+      .where(eq(orgServiceOrders.id, orderId))
+      .returning();
+    return updated;
+  }
+
+  // Approval operations (B13)
+  async updateAssetApprovalStatus(
+    assetId: string, 
+    orgId: string, 
+    approvalStatus: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED', 
+    approvedById?: string, 
+    reviewNotes?: string
+  ): Promise<Asset | undefined> {
+    const updateData: Partial<Asset> = { 
+      approvalStatus,
+      reviewNotes: reviewNotes || null
+    };
+    
+    // Set approval info when approved
+    if (approvalStatus === 'APPROVED' && approvedById) {
+      updateData.approvedById = approvedById;
+      updateData.approvedAt = new Date();
+    }
+    
+    const [updated] = await db
+      .update(assets)
+      .set(updateData)
+      .where(and(eq(assets.id, assetId), eq(assets.organizationId, orgId)))
+      .returning();
+    return updated;
+  }
+
+  async updateTaskApprovalStatus(
+    taskId: string, 
+    orgId: string, 
+    approvalStatus: 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED', 
+    approvedById?: string, 
+    reviewNotes?: string
+  ): Promise<MarketingTask | undefined> {
+    const updateData: Partial<MarketingTask> = { 
+      approvalStatus,
+      reviewNotes: reviewNotes || null
+    };
+    
+    // Set approval info when approved
+    if (approvalStatus === 'APPROVED' && approvedById) {
+      updateData.approvedById = approvedById;
+      updateData.approvedAt = new Date();
+    }
+    
+    const [updated] = await db
+      .update(marketingTasks)
+      .set(updateData)
+      .where(and(eq(marketingTasks.id, taskId), eq(marketingTasks.organizationId, orgId)))
       .returning();
     return updated;
   }

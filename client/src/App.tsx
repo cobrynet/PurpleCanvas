@@ -18,6 +18,7 @@ import Marketplace from "@/pages/Marketplace";
 import Notifications from "@/pages/Notifications";
 import Chat from "@/pages/Chat";
 import ConsoleOperatori from "@/pages/ConsoleOperatori";
+import VendorConsole from "@/pages/VendorConsole";
 import Settings from "@/pages/Settings";
 import Goals from "@/pages/Goals";
 import OfflineActivities from "@/pages/OfflineActivities";
@@ -69,6 +70,7 @@ function Router() {
                     <Route path="/notifications" component={Notifications} />
                     <Route path="/chat" component={Chat} />
                     <Route path="/console" component={ConsoleOperatori} />
+                    <Route path="/vendor" component={VendorConsole} />
                     <Route path="/settings" component={Settings} />
                     <Route component={NotFound} />
                   </Switch>

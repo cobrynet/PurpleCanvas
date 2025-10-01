@@ -13,7 +13,8 @@ import {
   MessageSquare,
   HelpCircle,
   Share2,
-  LogOut
+  LogOut,
+  Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,18 +28,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { OrganizationSelector } from "@/components/OrganizationSelector";
+import { useOrganization } from "@/hooks/useOrganization";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-const sidebarItems = [
+const allSidebarItems = [
   { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/goals" },
   { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing" },
   { id: "social", label: "Collega Social", icon: Share2, href: "/social-connections" },
   { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
   { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
   { id: "marketplace", label: "Marketplace", icon: ShoppingBag, href: "/marketplace" },
+  { id: "vendor", label: "Vendor Console", icon: Package, href: "/vendor", vendorOnly: true },
   { id: "notifiche", label: "Notifiche", icon: Bell, href: "/notifications" },
   { id: "chat", label: "Chat", icon: MessageCircle, href: "/chat" },
   { id: "impostazioni", label: "Impostazioni", icon: Settings, href: "/settings" },
@@ -46,6 +49,16 @@ const sidebarItems = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
+  const { selectedOrganization } = useOrganization();
+  const userRole = selectedOrganization?.membership?.role;
+  
+  // Filter sidebar items based on user role
+  const sidebarItems = allSidebarItems.filter(item => {
+    if (item.vendorOnly) {
+      return userRole === 'VENDOR';
+    }
+    return true;
+  });
 
   const isActiveRoute = (href: string, itemId?: string) => {
     // Highlight "obiettivi" when on goals route

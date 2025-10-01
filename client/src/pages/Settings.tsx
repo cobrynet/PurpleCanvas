@@ -63,6 +63,131 @@ const organizationFormSchema = z.object({
   }),
 });
 
+function BillingTab() {
+  const { toast } = useToast();
+  
+  const { data: subscriptionData, isLoading, error } = useQuery<{
+    subscription: any;
+    plan: any;
+  }>({
+    queryKey: ['/api/billing/subscription'],
+  });
+
+  const openBillingPortal = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/billing/create-portal-session', {});
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile aprire il portale di fatturazione",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin" data-testid="loading-subscription" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-destructive text-center" data-testid="error-subscription">
+            Errore nel caricamento delle informazioni di abbonamento
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const plan = subscriptionData?.plan;
+  const sub = subscriptionData?.subscription;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="w-5 h-5" />
+          Fatturazione e Abbonamento
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div>
+              <h4 className="font-medium">Piano Attuale</h4>
+              {plan ? (
+                <>
+                  <p className="text-sm text-muted-foreground" data-testid="plan-name">{plan.name}</p>
+                  <p className="text-xs text-muted-foreground" data-testid="plan-price">
+                    €{plan.priceMonthly}/mese - {plan.billingPeriod === 'MONTHLY' ? 'Mensile' : 'Annuale'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground" data-testid="no-subscription">Nessun abbonamento attivo</p>
+              )}
+            </div>
+            {sub && <Badge variant="default" data-testid="subscription-status">{sub.status === 'ACTIVE' ? 'Attivo' : sub.status}</Badge>}
+          </div>
+
+          {plan && (
+            <div className="p-4 border rounded-lg space-y-2">
+              <h4 className="text-sm font-medium">Limiti del Piano</h4>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Utenti</p>
+                  <p className="font-medium" data-testid="limit-users">{plan.maxUsers === -1 ? 'Illimitati' : plan.maxUsers}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Asset</p>
+                  <p className="font-medium" data-testid="limit-assets">{plan.maxAssets === -1 ? 'Illimitati' : plan.maxAssets}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Post/Mese</p>
+                  <p className="font-medium" data-testid="limit-posts">{plan.maxPostsPerMonth === -1 ? 'Illimitati' : plan.maxPostsPerMonth}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <Button
+            onClick={() => openBillingPortal.mutate()}
+            disabled={openBillingPortal.isPending || !sub}
+            data-testid="open-billing-portal"
+            className="flex items-center gap-2"
+          >
+            {openBillingPortal.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CreditCard className="w-4 h-4" />
+            )}
+            Gestisci Abbonamento
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Accedi al portale Stripe per gestire metodo di pagamento, fatture e abbonamento
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const [showApiKey, setShowApiKey] = useState(false);
@@ -912,97 +1037,7 @@ export default function SettingsPage() {
 
         {/* Billing Tab */}
         <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Fatturazione e Pagamenti
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">Piano Attuale</h4>
-                    <p className="text-sm text-muted-foreground">Professional Plan</p>
-                    <p className="text-xs text-muted-foreground">€99/mese - Fatturazione mensile</p>
-                  </div>
-                  <Badge variant="default">Attivo</Badge>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Metodo di Pagamento</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cardNumber">Numero Carta</Label>
-                    <Input 
-                      id="cardNumber" 
-                      placeholder="**** **** **** 1234"
-                      data-testid="input-card-number"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cardExpiry">Scadenza</Label>
-                    <Input 
-                      id="cardExpiry" 
-                      placeholder="MM/YY"
-                      data-testid="input-card-expiry"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Dati Fatturazione</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="billingName">Nome/Ragione Sociale</Label>
-                    <Input 
-                      id="billingName" 
-                      placeholder="Stratikey S.r.l."
-                      data-testid="input-billing-name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vatNumber">Partita IVA</Label>
-                    <Input 
-                      id="vatNumber" 
-                      placeholder="IT12345678901"
-                      data-testid="input-vat-number"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="billingAddress">Indirizzo</Label>
-                    <Textarea 
-                      id="billingAddress" 
-                      placeholder="Via Roma 1, 20121 Milano (MI), Italia"
-                      data-testid="textarea-billing-address"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Switch id="autoRenewal" data-testid="switch-auto-renewal" defaultChecked />
-                  <Label htmlFor="autoRenewal">Rinnovo Automatico</Label>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Il piano si rinnoverà automaticamente alla scadenza
-                </p>
-              </div>
-
-              <Button 
-                onClick={() => handleSave("Fatturazione")}
-                data-testid="save-billing"
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Salva Fatturazione
-              </Button>
-            </CardContent>
-          </Card>
+          <BillingTab />
         </TabsContent>
 
         {/* Developer Tab */}

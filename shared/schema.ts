@@ -521,6 +521,26 @@ export const userDeletionRequests = pgTable("user_deletion_requests", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Strategy Drafts (B10 - AI Strategy Generation)
+export const strategyDrafts = pgTable("strategy_drafts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  goalId: uuid("goal_id").references(() => businessGoals.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  strategicSummary: text("strategic_summary"),
+  marketingStrategy: text("marketing_strategy"),
+  salesStrategy: text("sales_strategy"),
+  quarterlyRoadmap: jsonb("quarterly_roadmap"),
+  generatedTasks: jsonb("generated_tasks"),
+  sourceDocuments: jsonb("source_documents"),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_strategy_drafts_organization").on(table.organizationId),
+  index("idx_strategy_drafts_goal").on(table.goalId)
+]);
+
 // Relationships
 export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(memberships),
@@ -841,6 +861,16 @@ export const insertUserDeletionRequestSchema = createInsertSchema(userDeletionRe
 
 export type UserDeletionRequest = typeof userDeletionRequests.$inferSelect;
 export type InsertUserDeletionRequest = z.infer<typeof insertUserDeletionRequestSchema>;
+
+// B10 - Strategy Draft schemas
+export const insertStrategyDraftSchema = createInsertSchema(strategyDrafts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type StrategyDraft = typeof strategyDrafts.$inferSelect;
+export type InsertStrategyDraft = z.infer<typeof insertStrategyDraftSchema>;
 
 // Settings schemas
 export const userSettingsSchema = z.object({

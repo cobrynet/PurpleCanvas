@@ -81,6 +81,8 @@ export const auditLogs = pgTable("audit_logs", {
   action: varchar("action").notNull(),
   entity: varchar("entity").notNull(),
   entityId: varchar("entity_id"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -669,6 +671,11 @@ export const insertAgentPresenceSchema = createInsertSchema(agentPresence).omit(
   id: true,
 });
 
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Authentication schemas
 export const authRegisterSchema = z.object({
   email: z.string().email("Formato email non valido"),
@@ -730,6 +737,8 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type SocialConnection = typeof socialConnections.$inferSelect;
 export type InsertSocialConnection = z.infer<typeof insertSocialConnectionSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuthRegister = z.infer<typeof authRegisterSchema>;
 export type AuthLogin = z.infer<typeof authLoginSchema>;
 

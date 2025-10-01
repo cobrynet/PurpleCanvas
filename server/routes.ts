@@ -3,6 +3,9 @@ import { createServer, type Server } from "http";
 import Stripe from "stripe";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, withCurrentOrganization } from "./replitAuth";
+import { requirePermission } from "./rbac";
+import { captureAuditContext, createAuditLogger } from "./auditMiddleware";
+import { authRateLimit, uploadRateLimit, publishRateLimit, checkoutRateLimit } from "./rateLimiter";
 import { db } from "./db";
 import { organizations } from "@shared/schema";
 import { count } from "drizzle-orm";
@@ -526,6 +529,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Audit context capture - captures IP and User-Agent for all requests
+  app.use(captureAuditContext());
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -586,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Goals routes
-  app.post('/api/goals', isAuthenticated, async (req: any, res) => {
+  app.post('/api/goals', isAuthenticated, withCurrentOrganization, requirePermission('goals', 'create'), async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
       const { useAI, ...bodyWithoutUseAI } = req.body;
@@ -714,6 +720,9 @@ Genera un piano coerente e realistico in formato JSON.`;
         planId = manualPlan.id;
       }
       
+      const audit = createAuditLogger('create', 'goal');
+      await audit(req, goalData.organizationId, goal.id, { objectives: goal.objectives, periodicity: goal.periodicity });
+      
       const response = { ok: true, goalId: goal.id, planId };
       console.log("[POST /api/goals] Sending response:", JSON.stringify(response));
       res.json(response);
@@ -809,7 +818,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.delete('/api/goals/:goalId', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.delete('/api/goals/:goalId', isAuthenticated, withCurrentOrganization, requirePermission('goals', 'delete'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const { goalId } = req.params;
@@ -829,6 +838,9 @@ Genera un piano coerente e realistico in formato JSON.`;
       // Delete the goal (this should cascade to related tables)
       await storage.deleteBusinessGoal(goalId);
       
+      const audit = createAuditLogger('delete', 'goal');
+      await audit(req, orgId, goalId);
+      
       res.json({ ok: true });
     } catch (error) {
       console.error("Error deleting goal:", error);
@@ -836,7 +848,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.post('/api/goals/:goalId/generate-tasks', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/goals/:goalId/generate-tasks', isAuthenticated, withCurrentOrganization, requirePermission('goals', 'create'), async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
@@ -1152,7 +1164,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // AI-powered goal plan generation
-  app.post('/api/goals/:goalId/ai-plan', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/goals/:goalId/ai-plan', isAuthenticated, withCurrentOrganization, requirePermission('goals', 'create'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const { goalId } = req.params;
@@ -1304,7 +1316,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Generate strategy PDF
-  app.post('/api/goals/:goalId/strategy-pdf', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/goals/:goalId/strategy-pdf', isAuthenticated, withCurrentOrganization, requirePermission('goals', 'create'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const { goalId } = req.params;
@@ -1534,7 +1546,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Campaign routes
-  app.post('/api/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'create'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
@@ -1549,6 +1561,10 @@ Genera un piano coerente e realistico in formato JSON.`;
       });
       
       const campaign = await storage.createCampaign(campaignData);
+      
+      const audit = createAuditLogger('create', 'campaign');
+      await audit(req, orgId, campaign.id, { name: campaign.name, type: campaign.type });
+      
       res.json(campaign);
     } catch (error) {
       console.error("Error creating campaign:", error);
@@ -1556,7 +1572,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'read'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1569,7 +1585,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Marketing ADV Campaigns - using current organization
-  app.get('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'read'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
@@ -1589,7 +1605,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.post('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/marketing/campaigns', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'create'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       const membership = req.currentMembership;
@@ -1607,6 +1623,9 @@ Genera un piano coerente e realistico in formato JSON.`;
       });
       
       const campaign = await storage.createCampaign(campaignData);
+      
+      const audit = createAuditLogger('create', 'campaign');
+      await audit(req, orgId, campaign.id, { name: campaign.name, type: campaign.type });
       
       // Create a linked marketing task if requested
       if (req.body.createTask) {
@@ -1633,7 +1652,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.patch('/api/marketing/campaigns/:id', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.patch('/api/marketing/campaigns/:id', isAuthenticated, withCurrentOrganization, requirePermission('marketing', 'update'), async (req: any, res) => {
     try {
       const campaignId = req.params.id;
       const orgId = req.currentOrganization;
@@ -1661,7 +1680,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Lead routes
-  app.post('/api/leads', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/leads', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'create'), async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
@@ -1678,6 +1697,9 @@ Genera un piano coerente e realistico in formato JSON.`;
       });
       
       const lead = await storage.createLead(leadData);
+      
+      const audit = createAuditLogger('create', 'lead');
+      await audit(req, orgId, lead.id, { company: lead.company, source: lead.source });
       
       // Create automated follow-up task based on organization settings
       const followUpTaskData = {
@@ -1701,7 +1723,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/leads', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/leads', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'read'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1714,7 +1736,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Opportunity routes
-  app.post('/api/opportunities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/opportunities', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'create'), async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
@@ -1731,6 +1753,9 @@ Genera un piano coerente e realistico in formato JSON.`;
       });
       
       const opportunity = await storage.createOpportunity(opportunityData);
+      
+      const audit = createAuditLogger('create', 'opportunity');
+      await audit(req, orgId, opportunity.id, { title: opportunity.title, stage: opportunity.stage, amount: opportunity.amount });
       
       // Create automated reminder task based on organization settings
       const reminderTaskData = {
@@ -1755,7 +1780,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/opportunities', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/opportunities', isAuthenticated, withCurrentOrganization, requirePermission('crm', 'read'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1844,7 +1869,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Marketing Offline Activity routes
-  app.post('/api/marketing/offline', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/marketing/offline', isAuthenticated, withCurrentOrganization, requirePermission('marketing_offline', 'create'), async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
@@ -1891,7 +1916,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.get('/api/marketing/offline', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/marketing/offline', isAuthenticated, withCurrentOrganization, requirePermission('marketing_offline', 'read'), async (req: any, res) => {
     try {
       const orgId = req.currentOrganization;
       
@@ -1903,7 +1928,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.patch('/api/marketing/offline/:id', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.patch('/api/marketing/offline/:id', isAuthenticated, withCurrentOrganization, requirePermission('marketing_offline', 'update'), async (req: any, res) => {
     try {
       const { id } = req.params;
       const orgId = req.currentOrganization;
@@ -2100,7 +2125,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Upload routes
-  app.post('/api/upload/init', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/upload/init', uploadRateLimit, isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const { filename, fileType, fileSize } = req.body;
       const orgId = req.currentOrganization;
@@ -2139,7 +2164,7 @@ Genera un piano coerente e realistico in formato JSON.`;
     }
   });
 
-  app.post('/api/upload/complete', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/upload/complete', uploadRateLimit, isAuthenticated, withCurrentOrganization, async (req: any, res) => {
     try {
       const userId = getUserId(req.user);
       const orgId = req.currentOrganization;
@@ -2223,7 +2248,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   app.delete('/api/social/posts/:id/schedule', isAuthenticated, (req, res) => {
     res.status(501).json({ error: 'Social post unscheduling not yet implemented' });
   });
-  app.post('/api/social/posts/:id/publish', isAuthenticated, withCurrentOrganization, publishSocialPost);
+  app.post('/api/social/posts/:id/publish', publishRateLimit, isAuthenticated, withCurrentOrganization, publishSocialPost);
   app.get('/api/social/posts/:id/publish', isAuthenticated, withCurrentOrganization, getPublishStatus);
 
   // Marketplace routes
@@ -2663,7 +2688,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Stripe Marketplace Checkout API
-  app.post('/api/marketplace/checkout', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.post('/api/marketplace/checkout', checkoutRateLimit, isAuthenticated, withCurrentOrganization, requirePermission('marketplace', 'create'), async (req: any, res) => {
     try {
       if (!stripe) {
         return res.status(503).json({ error: 'Stripe not configured' });
@@ -2688,6 +2713,9 @@ Genera un piano coerente e realistico in formato JSON.`;
         stripePaymentIntentId: null,
         options: req.body.options || null,
       });
+
+      const audit = createAuditLogger('create', 'order');
+      await audit(req, organizationId, order.id, { serviceId, quantity, total, status: 'REQUESTED' });
 
       // Create Stripe Checkout Session
       const session = await stripe.checkout.sessions.create({
@@ -3012,7 +3040,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Get organization settings
-  app.get('/api/settings/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/settings/organization', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'read'), async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
       const membership = req.currentMembership;
@@ -3049,7 +3077,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Update organization settings (requires ORG_ADMIN or SUPER_ADMIN)
-  app.patch('/api/settings/organization', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.patch('/api/settings/organization', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'update'), async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
       const membership = req.currentMembership;
@@ -3096,7 +3124,7 @@ Genera un piano coerente e realistico in formato JSON.`;
   });
 
   // Get organization members (for user management section)
-  app.get('/api/settings/organization/members', isAuthenticated, withCurrentOrganization, async (req: any, res) => {
+  app.get('/api/settings/organization/members', isAuthenticated, withCurrentOrganization, requirePermission('settings', 'read'), async (req: any, res) => {
     try {
       const organizationId = req.currentOrganization;
       const membership = req.currentMembership;

@@ -20,6 +20,7 @@ import {
   conversations,
   conversationMessages,
   agentPresence,
+  auditLogs,
   type User,
   type UpsertUser,
   type Organization,
@@ -61,6 +62,8 @@ import {
   type OrganizationSettings,
   type GoalPlan,
   type InsertGoalPlan,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, ne, isNotNull, sql } from "drizzle-orm";
@@ -208,6 +211,10 @@ export interface IStorage {
   // Task automation operations
   createMarketingTaskWithAutomation(task: InsertMarketingTask): Promise<MarketingTask>;
   applyTaskAutomationRules(task: InsertMarketingTask, orgSettings: OrganizationSettings | null): Promise<InsertMarketingTask>;
+
+  // Audit log operations
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(orgId: string, filters?: { userId?: string; entity?: string; action?: string }): Promise<AuditLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1258,6 +1265,33 @@ export class DatabaseStorage implements IStorage {
     }
     
     return result;
+  }
+
+  // Audit log operations
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [created] = await db.insert(auditLogs).values(log).returning();
+    return created;
+  }
+
+  async getAuditLogs(orgId: string, filters?: { userId?: string; entity?: string; action?: string }): Promise<AuditLog[]> {
+    const conditions = [eq(auditLogs.organizationId, orgId)];
+    
+    if (filters?.userId) {
+      conditions.push(eq(auditLogs.userId, filters.userId));
+    }
+    if (filters?.entity) {
+      conditions.push(eq(auditLogs.entity, filters.entity));
+    }
+    if (filters?.action) {
+      conditions.push(eq(auditLogs.action, filters.action));
+    }
+
+    return await db
+      .select()
+      .from(auditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(1000);
   }
 }
 

@@ -11,6 +11,8 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { authRegisterSchema, authLoginSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import { authRateLimit } from "./rateLimiter";
+import { logAudit } from "./auditMiddleware";
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
@@ -237,7 +239,7 @@ export async function setupAuth(app: Express) {
   });
 
   // Email/password registration endpoint
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authRateLimit, async (req, res) => {
     try {
       // Validate request body with Zod
       const validationResult = authRegisterSchema.safeParse(req.body);
@@ -266,6 +268,23 @@ export async function setupAuth(app: Express) {
 
       // Create user with automatic onboarding
       const user = await createUserWithOnboarding(email, password, firstName, lastName);
+
+      const userOrgs = await storage.getUserOrganizations(user.id);
+      if (userOrgs.length > 0) {
+        const ip = (req as any).auditContext?.ipAddress || req.ip || 'unknown';
+        const userAgent = (req as any).auditContext?.userAgent || req.headers['user-agent'] || '';
+        
+        await logAudit(
+          userOrgs[0].id,
+          user.id,
+          'register',
+          'user',
+          user.id,
+          ip,
+          userAgent,
+          { email: user.email, method: 'email_password' }
+        );
+      }
 
       // Regenerate session ID to prevent fixation, then login the user
       req.session.regenerate((err) => {
@@ -302,7 +321,7 @@ export async function setupAuth(app: Express) {
   });
 
   // Email/password login endpoint
-  app.post("/api/auth/login", (req, res, next) => {
+  app.post("/api/auth/login", authRateLimit, (req, res, next) => {
     try {
       // Validate request body with Zod
       const validationResult = authLoginSchema.safeParse(req.body);
@@ -335,9 +354,26 @@ export async function setupAuth(app: Express) {
             return res.status(500).json({ message: "Errore durante la sicurezza della sessione" });
           }
           
-          req.login(user, (err) => {
+          req.login(user, async (err) => {
             if (err) {
               return res.status(500).json({ message: "Errore durante il login" });
+            }
+            
+            const userOrgs = await storage.getUserOrganizations(user.id);
+            if (userOrgs.length > 0) {
+              const ip = (req as any).auditContext?.ipAddress || req.ip || 'unknown';
+              const userAgent = (req as any).auditContext?.userAgent || req.headers['user-agent'] || '';
+              
+              await logAudit(
+                userOrgs[0].id,
+                user.id,
+                'login',
+                'user',
+                user.id,
+                ip,
+                userAgent,
+                { email: user.email, method: 'email_password' }
+              );
             }
             
             res.json({ 

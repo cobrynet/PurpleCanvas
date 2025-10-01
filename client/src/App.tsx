@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ChatWidget } from "@/components/ChatWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/app/layout";
@@ -90,18 +91,20 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="stratikey-ui-theme">
-        <ModalProvider>
-          <OrganizationProvider>
-            <TooltipProvider>
-              <Toaster />
-              <NotificationManager />
-              <NotificationTestButton />
-              <Router />
-            </TooltipProvider>
-          </OrganizationProvider>
-        </ModalProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider defaultTheme="light" storageKey="stratikey-ui-theme">
+          <ModalProvider>
+            <OrganizationProvider>
+              <TooltipProvider>
+                <Toaster />
+                <NotificationManager />
+                <NotificationTestButton />
+                <Router />
+              </TooltipProvider>
+            </OrganizationProvider>
+          </ModalProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

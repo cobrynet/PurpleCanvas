@@ -31,6 +31,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { UserSettings, OrganizationSettings } from "@shared/schema";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Form schemas
 const accountFormSchema = z.object({
@@ -191,6 +192,7 @@ function BillingTab() {
 export default function SettingsPage() {
   const { toast } = useToast();
   const [showApiKey, setShowApiKey] = useState(false);
+  const { language, setLanguage } = useLanguage();
 
   // Fetch user settings
   const { data: userSettings, isLoading: userSettingsLoading, error: userSettingsError } = useQuery({
@@ -268,6 +270,11 @@ export default function SettingsPage() {
   });
 
   const handleAccountSave = (data: z.infer<typeof accountFormSchema>) => {
+    // Update i18n context when language changes
+    if (data.language !== language && (data.language === 'it' || data.language === 'en')) {
+      setLanguage(data.language as 'it' | 'en');
+    }
+    
     // Merge with existing interface settings to preserve all properties
     const updateData: Partial<UserSettings> = {
       language: data.language,

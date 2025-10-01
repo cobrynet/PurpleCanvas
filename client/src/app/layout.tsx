@@ -31,22 +31,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { OrganizationSelector } from "@/components/OrganizationSelector";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 const allSidebarItems = [
-  { id: "obiettivi", label: "Obiettivi", icon: Target, href: "/goals" },
-  { id: "marketing", label: "Marketing", icon: Megaphone, href: "/marketing" },
-  { id: "social", label: "Collega Social", icon: Share2, href: "/social-connections" },
-  { id: "commerciale", label: "Commerciale", icon: Users, href: "/crm/leads" },
-  { id: "attivita", label: "Attività", icon: CheckSquare, href: "/tasks" },
-  { id: "marketplace", label: "Marketplace", icon: ShoppingBag, href: "/marketplace" },
-  { id: "vendor", label: "Vendor Console", icon: Package, href: "/vendor", vendorOnly: true },
-  { id: "notifiche", label: "Notifiche", icon: Bell, href: "/notifications" },
-  { id: "chat", label: "Chat", icon: MessageCircle, href: "/chat" },
-  { id: "impostazioni", label: "Impostazioni", icon: Settings, href: "/settings" },
+  { id: "obiettivi", labelKey: "nav.goals" as const, icon: Target, href: "/goals" },
+  { id: "marketing", labelKey: "nav.marketing" as const, icon: Megaphone, href: "/marketing" },
+  { id: "social", labelKey: "nav.social" as const, icon: Share2, href: "/social-connections" },
+  { id: "commerciale", labelKey: "nav.crm" as const, icon: Users, href: "/crm/leads" },
+  { id: "attivita", labelKey: "nav.tasks" as const, icon: CheckSquare, href: "/tasks" },
+  { id: "marketplace", labelKey: "nav.marketplace" as const, icon: ShoppingBag, href: "/marketplace" },
+  { id: "vendor", labelKey: "nav.vendor" as const, icon: Package, href: "/vendor", vendorOnly: true },
+  { id: "notifiche", labelKey: "nav.notifications" as const, icon: Bell, href: "/notifications" },
+  { id: "chat", labelKey: "nav.chat" as const, icon: MessageCircle, href: "/chat" },
+  { id: "impostazioni", labelKey: "nav.settings" as const, icon: Settings, href: "/settings" },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -54,6 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { selectedOrganization } = useOrganization();
   const userRole = selectedOrganization?.membership?.role;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { t } = useLanguage();
   
   // Filter sidebar items based on user role
   const sidebarItems = allSidebarItems.filter(item => {
@@ -78,7 +80,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen bg-white dark:bg-black">
       {/* Skip to main content for accessibility */}
       <a href="#main-content" className="skip-to-main">
-        Skip to main content
+        {t('a11y.skipToMain')}
       </a>
 
       {/* Mobile overlay */}
@@ -95,7 +97,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         className={`fixed left-0 top-0 z-50 h-screen w-64 bg-gradient-to-b from-[#390035] to-[#901d6b] text-white border-r border-border transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        aria-label="Main navigation"
+        aria-label={t('a11y.mainNav')}
       >
         <div className="flex h-full flex-col">
           {/* Logo and close button */}
@@ -108,7 +110,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               size="sm"
               className="lg:hidden text-white hover:bg-white/10"
               onClick={() => setSidebarOpen(false)}
-              aria-label="Close navigation menu"
+              aria-label={t('a11y.closeMenu')}
               data-testid="close-sidebar"
             >
               <X className="h-5 w-5" />
@@ -116,10 +118,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-4" aria-label="Primary navigation">
+          <nav className="flex-1 space-y-1 p-4" aria-label={t('a11y.mainNav')}>
             {sidebarItems.map((item) => {
               const Icon = item.icon;
               const isActive = isActiveRoute(item.href, item.id);
+              const label = t(item.labelKey);
               
               return (
                 <Button
@@ -131,13 +134,13 @@ export function AppLayout({ children }: AppLayoutProps) {
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                   data-testid={`sidebar-${item.id}`}
-                  aria-label={item.label}
+                  aria-label={label}
                   aria-current={isActive ? "page" : undefined}
                   asChild
                 >
                   <Link href={item.href} onClick={() => setSidebarOpen(false)}>
                     <Icon className="mr-3 h-4 w-4" aria-hidden="true" />
-                    {item.label}
+                    {label}
                   </Link>
                 </Button>
               );
@@ -157,7 +160,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               size="sm"
               className="lg:hidden"
               onClick={() => setSidebarOpen(true)}
-              aria-label="Open navigation menu"
+              aria-label={t('a11y.openMenu')}
               data-testid="open-sidebar"
             >
               <Menu className="h-5 w-5" />
@@ -171,12 +174,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                 variant="ghost" 
                 size="sm"
                 data-testid="settings-button"
-                aria-label="Impostazioni"
+                aria-label={t('header.settings')}
                 asChild
               >
                 <Link href="/settings">
                   <Settings className="h-4 w-4" />
-                  <span className="ml-2 hidden md:inline">Impostazioni</span>
+                  <span className="ml-2 hidden md:inline">{t('header.settings')}</span>
                 </Link>
               </Button>
 
@@ -188,7 +191,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     size="sm" 
                     className="relative"
                     data-testid="notifications-button"
-                    aria-label="Notifiche"
+                    aria-label={t('header.notifications')}
                   >
                     <Bell className="h-4 w-4" />
                     <Badge 
@@ -199,7 +202,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Notifiche</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t('header.notifications')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem data-testid="notification-item">
                     <div className="flex flex-col space-y-1">
@@ -227,10 +230,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                 variant="ghost" 
                 size="sm"
                 data-testid="feedback-button"
-                aria-label="Feedback"
+                aria-label={t('header.feedback')}
               >
                 <MessageSquare className="h-4 w-4" />
-                <span className="ml-2 hidden md:inline">Feedback</span>
+                <span className="ml-2 hidden md:inline">{t('header.feedback')}</span>
               </Button>
 
               {/* Assistenza */}
@@ -238,10 +241,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                 variant="ghost" 
                 size="sm"
                 data-testid="help-button"
-                aria-label="Assistenza"
+                aria-label={t('header.help')}
               >
                 <HelpCircle className="h-4 w-4" />
-                <span className="ml-2 hidden md:inline">Assistenza</span>
+                <span className="ml-2 hidden md:inline">{t('header.help')}</span>
               </Button>
 
               {/* Account */}
@@ -251,7 +254,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     variant="ghost" 
                     className="relative h-8 w-8 rounded-full"
                     data-testid="account-button"
-                    aria-label="Account"
+                    aria-label={t('header.account')}
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src="/avatar.jpg" alt="User" />
@@ -264,7 +267,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">Account</p>
+                      <p className="text-sm font-medium leading-none">{t('header.account')}</p>
                       <p className="text-xs leading-none text-muted-foreground">
                         user@example.com
                       </p>
@@ -273,11 +276,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem data-testid="account-settings">
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profilo</span>
+                    <span>{t('header.profile')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem data-testid="account-settings-general">
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Impostazioni</span>
+                    <span>{t('header.settings')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
@@ -285,7 +288,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     onClick={() => window.location.href = '/api/logout'}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
+                    <span>{t('header.logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

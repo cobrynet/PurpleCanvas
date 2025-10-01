@@ -27,6 +27,13 @@ Stratikey is a comprehensive B2B multi-tenant platform designed for autonomous m
 - **Language Switching**: Integrated language switcher in Settings page with localStorage persistence and HTML lang attribute sync
 - **Translation Structure**: Organized keys (nav.*, header.*, a11y.*, settings.*, common.*) in translations.ts
 
+### B16 - UI Overlap & Spacing Fixes
+- **Notifications Dropdown**: Updated to load real notifications from API with `px-3 py-3` padding, scrollable content (max-h-400px), dynamic unread count badge
+- **Dropdown Menu Items**: Increased padding from `px-2 py-1.5` to `px-3 py-3` for better hit area and visual separation
+- **Modal Forms**: Standardized all modal forms with `space-y-3` label-to-input spacing (previously `space-y-2`), all labels set to `text-white` for visibility on purple gradient backgrounds
+- **Affected Components**: OfflineActivities, Marketplace QuickBuy, Marketing post creation/edit, notifications dropdown in AppLayout
+- **Theme Consistency**: Purple gradient modals (#390035 to #901d6b) with white text ensure WCAG AA contrast compliance
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

@@ -32,6 +32,7 @@ import {
 import { OrganizationSelector } from "@/components/OrganizationSelector";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNotifications, useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -56,6 +57,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const userRole = selectedOrganization?.membership?.role;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { t } = useLanguage();
+  const { data: notificationsData } = useNotifications();
+  const unreadCount = useUnreadNotificationsCount();
   
   // Filter sidebar items based on user role
   const sidebarItems = allSidebarItems.filter(item => {
@@ -194,34 +197,37 @@ export function AppLayout({ children }: AppLayoutProps) {
                     aria-label={t('header.notifications')}
                   >
                     <Bell className="h-4 w-4" />
-                    <Badge 
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs"
-                    >
-                      3
-                    </Badge>
+                    {unreadCount > 0 && (
+                      <Badge 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs"
+                      >
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">
                   <DropdownMenuLabel>{t('header.notifications')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem data-testid="notification-item">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Nuova campagna creata</p>
-                      <p className="text-xs text-muted-foreground">2 ore fa</p>
+                  {notificationsData?.notifications && notificationsData.notifications.length > 0 ? (
+                    notificationsData.notifications.map((notification) => (
+                      <DropdownMenuItem key={notification.id} data-testid="notification-item">
+                        <div className="flex flex-col w-full">
+                          <p className="text-sm font-medium">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground">{notification.message}</p>
+                          {notification.createdAt && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(notification.createdAt).toLocaleDateString('it-IT')}
+                            </p>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      Nessuna notifica
                     </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem data-testid="notification-item">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Lead convertito</p>
-                      <p className="text-xs text-muted-foreground">4 ore fa</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem data-testid="notification-item">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Task completato</p>
-                      <p className="text-xs text-muted-foreground">1 giorno fa</p>
-                    </div>
-                  </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
 
